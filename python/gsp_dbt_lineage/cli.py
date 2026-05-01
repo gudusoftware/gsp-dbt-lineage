@@ -25,6 +25,7 @@ from .confidence import annotate_dynamic_sql
 from .dialect import UnknownAdapterError, resolve_dialect
 from .emitters import datahub as datahub_emitter
 from .emitters import json as json_emitter
+from .emitters import openmetadata as om_emitter
 from .lineage_mapper import map_gsp_to_node
 from .lineage_schema import SchemaError, validate_lineage
 from .parser_client import (
@@ -60,6 +61,10 @@ def main(argv: list[str] | None = None) -> int:
             return _cmd_run(args)
         if args.command == "emit":
             return _cmd_emit(args)
+        if args.command == "check":
+            return _cmd_check(args)
+        if args.command == "diff":
+            return _cmd_diff(args)
         if args.command == "doctor":
             return _cmd_doctor(args)
         if args.command == "version":
@@ -113,10 +118,33 @@ def _build_parser() -> argparse.ArgumentParser:
 
     # --- emit ---
     e = sub.add_parser("emit", help="Convert column_lineage.json to a target catalog format.")
-    e.add_argument("target", choices=["datahub"], help="Output format")
+    e.add_argument("target", choices=["datahub", "openmetadata"], help="Output format")
     e.add_argument("--lineage", required=True, help="Path to column_lineage.json")
     e.add_argument("--out", required=True, help="Output path")
     e.add_argument("--env", default="PROD", help="DataHub environment name (PROD/DEV/...)")
+    e.add_argument("--service-name", default=None, help="OpenMetadata service name override")
+
+    # --- check ---
+    chk = sub.add_parser("check", help="Gate on coverage / regressions in CI.")
+    chk.add_argument("--lineage", required=True, help="Path to column_lineage.json")
+    chk.add_argument("--min-node-coverage", type=float, default=None,
+                     help="Fail if (parsed+partial)/eligible falls below this (0..1)")
+    chk.add_argument("--min-column-coverage", type=float, default=None,
+                     help="Fail if resolved_columns/total_columns falls below this (0..1)")
+    chk.add_argument("--fail-on-unsupported", action="store_true",
+                     help="Fail if any node has status=unsupported")
+    chk.add_argument("--fail-on-failed", action="store_true",
+                     help="Fail if any node has status=failed (default true in CI)")
+    chk.add_argument("--baseline", default=None,
+                     help="Optional prior column_lineage.json; fail on regression")
+    chk.add_argument("--fail-on-regression", action="store_true",
+                     help="With --baseline: fail if any node loses lineage relative to baseline")
+
+    # --- diff ---
+    diff = sub.add_parser("diff", help="Diff a column_lineage.json against a baseline.")
+    diff.add_argument("--current", required=True)
+    diff.add_argument("--baseline", required=True)
+    diff.add_argument("--format", choices=["text", "json"], default="text")
 
     # --- doctor ---
     d = sub.add_parser("doctor", help="Environment diagnostics (Python, dbt, manifest, backend reachability).")
@@ -384,8 +412,114 @@ def _cmd_emit(args: argparse.Namespace) -> int:
         datahub_emitter.write(mcps, args.out)
         print(f"wrote {args.out} — {len(mcps)} MCPs")
         return EXIT_OK
+    if args.target == "openmetadata":
+        reqs = om_emitter.emit(doc, service_name=args.service_name)
+        om_emitter.write(reqs, args.out)
+        print(f"wrote {args.out} — {len(reqs)} AddLineageRequests (BETA)")
+        return EXIT_OK
     print(f"error: unsupported target {args.target!r}", file=sys.stderr)
     return EXIT_ARGUMENT_ERROR
+
+
+def _node_coverage(doc: dict[str, Any]) -> float:
+    eligible = doc.get("manifest_metadata", {}).get("eligible_count", 0)
+    if not eligible:
+        return 1.0
+    parsed = doc.get("stats", {}).get("parsed", 0)
+    partial = doc.get("stats", {}).get("partial", 0)
+    return (parsed + partial) / eligible
+
+
+def _column_coverage(doc: dict[str, Any]) -> float:
+    return float(doc.get("stats", {}).get("coverage", 1.0))
+
+
+def _cmd_check(args: argparse.Namespace) -> int:
+    """CI gate: fail on coverage drop, regression, or unsupported nodes."""
+    p = Path(args.lineage)
+    if not p.is_file():
+        print(f"error: lineage doc not found: {p}", file=sys.stderr)
+        return EXIT_ARTIFACT_ERROR
+    doc = json.loads(p.read_text(encoding="utf-8"))
+
+    failures: list[str] = []
+    if args.min_node_coverage is not None:
+        nc = _node_coverage(doc)
+        if nc < args.min_node_coverage:
+            failures.append(f"node coverage {nc:.2%} below required {args.min_node_coverage:.2%}")
+    if args.min_column_coverage is not None:
+        cc = _column_coverage(doc)
+        if cc < args.min_column_coverage:
+            failures.append(f"column coverage {cc:.2%} below required {args.min_column_coverage:.2%}")
+    if args.fail_on_unsupported:
+        bad = [n["node_id"] for n in doc.get("nodes", []) if n.get("status") == "unsupported"]
+        if bad:
+            failures.append(f"{len(bad)} node(s) status=unsupported: {', '.join(bad[:5])}{'...' if len(bad) > 5 else ''}")
+    if args.fail_on_failed or is_ci_environment():
+        bad = [n["node_id"] for n in doc.get("nodes", []) if n.get("status") == "failed"]
+        if bad:
+            failures.append(f"{len(bad)} node(s) status=failed: {', '.join(bad[:5])}{'...' if len(bad) > 5 else ''}")
+    if args.baseline and args.fail_on_regression:
+        bp = Path(args.baseline)
+        if not bp.is_file():
+            print(f"warning: baseline {bp} not found; skipping regression check", file=sys.stderr)
+        else:
+            baseline_doc = json.loads(bp.read_text(encoding="utf-8"))
+            regressions = _diff_regressions(current=doc, baseline=baseline_doc)
+            if regressions:
+                preview = ", ".join(r["node_id"] for r in regressions[:5])
+                more = "..." if len(regressions) > 5 else ""
+                failures.append(f"{len(regressions)} regression(s) vs baseline: {preview}{more}")
+
+    if failures:
+        for f in failures:
+            print(f"FAIL: {f}", file=sys.stderr)
+        return EXIT_CI_GUARD
+    print("OK: all check gates passed.")
+    return EXIT_OK
+
+
+def _diff_regressions(*, current: dict[str, Any], baseline: dict[str, Any]) -> list[dict[str, Any]]:
+    """Return per-node regressions: nodes with fewer column edges than baseline."""
+    base_by_id = {n["node_id"]: n for n in baseline.get("nodes", [])}
+    out = []
+    for n in current.get("nodes", []):
+        nid = n["node_id"]
+        b = base_by_id.get(nid)
+        if not b:
+            continue
+        cur_edges = sum(len(c.get("upstream") or []) for c in (n.get("columns") or []))
+        base_edges = sum(len(c.get("upstream") or []) for c in (b.get("columns") or []))
+        if cur_edges < base_edges:
+            out.append({
+                "node_id": nid,
+                "edges_lost": base_edges - cur_edges,
+                "current": cur_edges,
+                "baseline": base_edges,
+            })
+    return out
+
+
+def _cmd_diff(args: argparse.Namespace) -> int:
+    cur = Path(args.current)
+    base = Path(args.baseline)
+    if not cur.is_file() or not base.is_file():
+        print("error: --current and --baseline must both exist", file=sys.stderr)
+        return EXIT_ARTIFACT_ERROR
+    current_doc = json.loads(cur.read_text(encoding="utf-8"))
+    baseline_doc = json.loads(base.read_text(encoding="utf-8"))
+    regressions = _diff_regressions(current=current_doc, baseline=baseline_doc)
+
+    if args.format == "json":
+        print(json.dumps({"regressions": regressions}, indent=2))
+        return EXIT_OK
+    if not regressions:
+        print("No regressions: every node has at least as many column edges as baseline.")
+        return EXIT_OK
+    print(f"{len(regressions)} regression(s) vs baseline:")
+    for r in regressions:
+        print(f"  {r['node_id']}: {r['baseline']} -> {r['current']} (-{r['edges_lost']})")
+    return EXIT_OK
 
 
 def _cmd_doctor(args: argparse.Namespace) -> int:

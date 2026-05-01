@@ -1,0 +1,86 @@
+name: 'gudusoftware/dbt-lineage CI check'
+description: 'Run gsp-dbt-lineage check on a dbt project to gate CI on column-lineage coverage and regressions.'
+branding:
+  icon: 'check-square'
+  color: 'blue'
+
+inputs:
+  python-version:
+    description: 'Python version to install'
+    required: false
+    default: '3.11'
+  manifest:
+    description: 'Path to target/manifest.json'
+    required: false
+    default: 'target/manifest.json'
+  backend:
+    description: 'anonymous | authenticated | self_hosted | local_jar'
+    required: false
+    default: 'authenticated'
+  user-id:
+    description: 'GSP user id (forwarded to --user-id; usually $GSP_USER_ID)'
+    required: false
+  secret-key:
+    description: 'GSP secret key (forwarded to --secret-key; usually $GSP_SECRET_KEY)'
+    required: false
+  url:
+    description: 'Backend URL override (required for self_hosted)'
+    required: false
+  out:
+    description: 'Output column_lineage.json path'
+    required: false
+    default: 'target/gudu/column_lineage.json'
+  min-node-coverage:
+    description: 'Minimum (parsed+partial)/eligible ratio (0..1)'
+    required: false
+    default: '0.95'
+  min-column-coverage:
+    description: 'Minimum resolved_columns/total_columns ratio (0..1)'
+    required: false
+    default: '0.0'
+  fail-on-regression:
+    description: 'true|false — when baseline given, fail on any node that lost lineage'
+    required: false
+    default: 'true'
+  baseline:
+    description: 'Optional path to a previous column_lineage.json for diff regression check'
+    required: false
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Install gsp-dbt-lineage
+      shell: bash
+      run: |
+        python -m pip install --upgrade pip
+        pip install gsp-dbt-lineage
+
+    - name: Run lineage extraction
+      shell: bash
+      env:
+        GSP_USER_ID: ${{ inputs.user-id }}
+        GSP_SECRET_KEY: ${{ inputs.secret-key }}
+      run: |
+        ARGS=(--manifest "${{ inputs.manifest }}" --backend "${{ inputs.backend }}" --out "${{ inputs.out }}")
+        if [ -n "${{ inputs.url }}" ]; then ARGS+=(--url "${{ inputs.url }}"); fi
+        gsp-dbt-lineage run "${ARGS[@]}"
+
+    - name: Check coverage and regressions
+      shell: bash
+      run: |
+        ARGS=(--lineage "${{ inputs.out }}")
+        if [ "${{ inputs.min-node-coverage }}" != "0" ]; then
+          ARGS+=(--min-node-coverage "${{ inputs.min-node-coverage }}")
+        fi
+        if [ "${{ inputs.min-column-coverage }}" != "0" ]; then
+          ARGS+=(--min-column-coverage "${{ inputs.min-column-coverage }}")
+        fi
+        if [ -n "${{ inputs.baseline }}" ] && [ -f "${{ inputs.baseline }}" ] && [ "${{ inputs.fail-on-regression }}" = "true" ]; then
+          ARGS+=(--baseline "${{ inputs.baseline }}" --fail-on-regression)
+        fi
+        gsp-dbt-lineage check "${ARGS[@]}"
