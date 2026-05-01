@@ -26,6 +26,16 @@ def test_bracketed_idents_preserved():
     assert "[secret]" in out
 
 
+def test_sql_doubled_quote_escape_treated_as_one_literal():
+    # `'O''Brien'` is one literal in SQL standard. The redactor must NOT split
+    # it into two literals (which would surface ' Brien' as if it were SQL.)
+    out = redact("SELECT 'O''Brien' FROM x WHERE y = 'z'")
+    # The output should have exactly two REDACTED markers (one per literal).
+    assert out.count("<REDACTED>") == 2
+    # And no orphan apostrophes.
+    assert "Brien" not in out
+
+
 def test_keywords_preserved():
     out = redact("SELECT 'a', 1 FROM x WHERE y = 'b' AND z > 99")
     assert "SELECT" in out

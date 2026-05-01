@@ -16,12 +16,6 @@
     {
       "columns": [
         {
-          "confidence": "low",
-          "name": "@ID",
-          "transform": "direct",
-          "upstream": []
-        },
-        {
           "confidence": "high",
           "name": "ID",
           "transform": "direct",
@@ -33,7 +27,7 @@
           ]
         }
       ],
-      "confidence": "medium",
+      "confidence": "high",
       "dialect": "dbvmssql",
       "downstream": [],
       "node_id": "fixture.E22",
@@ -47,13 +41,13 @@
   ],
   "schema_version": "0.2.x",
   "stats": {
-    "coverage": 0.5,
+    "coverage": 1.0,
     "failed": 0,
     "parsed": 1,
     "partial": 0,
     "resolved_columns": 1,
     "skipped": 0,
-    "total_columns": 2,
+    "total_columns": 1,
     "unsupported": 0
   }
 }

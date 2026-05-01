@@ -68,7 +68,10 @@ def emit(
             continue
         dialect = node.get("dialect")
         platform = pmap.get(dialect or "", dialect_to_platform(dialect))
-        target = dataset_urn(platform, node["node_id"].split(".", 2)[-1], env)
+        # Use the full dbt node_id ("model.demo.x", "snapshot.demo.x", "seed...")
+        # so we never collide a model URN with a snapshot URN that share the
+        # same final segment.
+        target = dataset_urn(platform, node["node_id"], env)
 
         upstreams = []
         for upstream_table in node.get("upstream_tables") or []:

@@ -219,6 +219,12 @@ def map_gsp_to_node(
         existing["upstream"] = sorted(merged, key=lambda e: (e["table"], e["column"]))
     columns = sorted(by_name.values(), key=lambda c: c["name"])
 
+    # Drop T-SQL @-prefixed local-variable pseudo-columns and BigQuery `@`
+    # query parameters — these are not real output columns. GSP surfaces them
+    # because `SELECT @x` parses as a column projection, but they don't
+    # belong in column lineage.
+    columns = [c for c in columns if not c["name"].startswith("@")]
+
     # 4. Status / overall confidence.
     if not columns and not upstream_tables:
         status = "unsupported"

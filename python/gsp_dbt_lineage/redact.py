@@ -19,7 +19,10 @@ import re
 
 # Order matters: handle quoted identifiers first so we don't redact their content.
 _QUOTED_IDENT = re.compile(r'(`[^`]*`|"[^"]*"|\[[^\]]*\])')
-_STRING_LITERAL = re.compile(r"'(?:\\'|[^'])*'")
+# Match a single-quoted string literal that handles BOTH the SQL-standard
+# doubled-quote escape (`'O''Brien'`) AND the C-style backslash escape
+# (`'O\'Brien'`) used by MySQL and others.
+_STRING_LITERAL = re.compile(r"'(?:''|\\'|[^'])*'")
 _NUMERIC_LITERAL = re.compile(r"\b\d+(?:\.\d+)?(?:[eE][+-]?\d+)?\b")
 
 

@@ -14,19 +14,12 @@
   },
   "nodes": [
     {
-      "columns": [
-        {
-          "confidence": "low",
-          "name": "@X",
-          "transform": "direct",
-          "upstream": []
-        }
-      ],
+      "columns": [],
       "confidence": "low",
       "dialect": "dbvmssql",
       "downstream": [],
       "node_id": "fixture.E20",
-      "status": "partial",
+      "status": "unsupported",
       "unresolved": [],
       "upstream_tables": [],
       "warnings": []
@@ -37,10 +30,10 @@
     "coverage": 0.0,
     "failed": 0,
     "parsed": 0,
-    "partial": 1,
+    "partial": 0,
     "resolved_columns": 0,
     "skipped": 0,
-    "total_columns": 1,
-    "unsupported": 0
+    "total_columns": 0,
+    "unsupported": 1
   }
 }

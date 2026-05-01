@@ -287,8 +287,31 @@ def _cmd_run(args: argparse.Namespace) -> int:
                     backend, sql, entry["dialect"], retries=args.retries
                 )
             except RateLimitError as e:
-                print(f"error: {e}", file=sys.stderr)
-                return EXIT_BACKEND_ERROR
+                # Mark THIS node as quota-limited and continue with remaining
+                # nodes as failed-but-recorded so the operator gets a partial
+                # document and a clear actionable error in stats.warnings.
+                logger.warning("node %s: rate-limited; remaining nodes will be marked quota_limited", nid)
+                stats["failed"] += 1
+                nodes_out.append({
+                    "node_id": nid, "status": "failed",
+                    "confidence": "low", "dialect": entry["dialect"],
+                    "upstream_tables": [], "downstream": [], "columns": [],
+                    "unresolved": [{"reason": "quota_limited", "detail": str(e)[:200]}],
+                    "warnings": [],
+                })
+                # Mark all remaining nodes the same way.
+                already_handled = {n["node_id"] for n in nodes_out}
+                remaining = [pe for pe in plan if pe["eligible"] and pe["node_id"] not in already_handled]
+                for r in remaining:
+                    stats["failed"] += 1
+                    nodes_out.append({
+                        "node_id": r["node_id"], "status": "failed",
+                        "confidence": "low", "dialect": r["dialect"],
+                        "upstream_tables": [], "downstream": [], "columns": [],
+                        "unresolved": [{"reason": "quota_limited", "detail": "anonymous tier exhausted earlier in this run"}],
+                        "warnings": [],
+                    })
+                break
             except (BackendUnavailable, ParserError) as e:
                 logger.warning("node %s: %s", nid, e)
                 stats["failed"] += 1

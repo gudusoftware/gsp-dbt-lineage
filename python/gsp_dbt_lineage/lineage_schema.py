@@ -88,7 +88,10 @@ LINEAGE_SCHEMA: dict[str, Any] = {
         },
         "column": {
             "type": "object",
-            "additionalProperties": True,
+            # Strict schema for the column object: extra fields would let a
+            # buggy emitter ship `upstreams` (plural) and silently lose lineage
+            # in catalogs that read `upstream` (singular).
+            "additionalProperties": False,
             "required": ["name"],
             "properties": {
                 "name": {"type": "string"},
@@ -96,7 +99,7 @@ LINEAGE_SCHEMA: dict[str, Any] = {
                     "type": "array",
                     "items": {
                         "type": "object",
-                        "additionalProperties": True,
+                        "additionalProperties": False,
                         "required": ["table", "column"],
                         "properties": {
                             "table": {"type": "string"},
