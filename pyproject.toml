@@ -44,7 +44,11 @@ openmetadata = [
     "openmetadata-ingestion>=1.4.0",
 ]
 jvm = [
-    # Helper utilities for local-JAR mode (system Java still required externally)
+    # Helper utilities for `--backend local_jar` mode. The actual JRE/JDK
+    # must be installed at the system level (the GSP JAR shells out via
+    # `java -cp ...`) — these extras only add Python helpers that detect
+    # JVM availability and version.
+    "jpype1>=1.4 ; python_version >= '3.9' and python_version < '3.13'",
 ]
 
 [project.urls]
