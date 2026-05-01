@@ -44,6 +44,16 @@ gsp-dbt-lineage check \
     --fail-on-regression --baseline path/to/baseline.json
 ```
 
+## Exit codes
+
+| Exit | Meaning |
+|---|---|
+| `0` | All gates passed |
+| `2` | CLI usage error |
+| `10` | Lineage doc unreadable |
+| `12` | A `check` gate failed (coverage / regression / unsupported / failed) |
+| `99` | Unexpected error |
+
 `check` exits non-zero on:
 
 | Gate | Default | Override |

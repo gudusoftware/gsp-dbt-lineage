@@ -44,6 +44,8 @@ In the rare case where a single dbt model produces multiple top-level result-set
 
 `--backend local_jar` shells out to a Java subprocess per call. Cold start is ~0.5–1s. For projects above ~100 nodes, prefer `--backend self_hosted` (one container, persistent JVM).
 
-## 8. Two-part install
+## 8. Two-part install (only if using the dbt-side macros)
 
-Currently requires `pip install gsp-dbt-lineage` AND `dbt deps` for the package macros. Phase 0.5 user research validated this; if revisited, ADR-007 captures the architectural reasoning for keeping the runtime in Python.
+The runtime CLI is a single `pip install gsp-dbt-lineage`. The dbt-side package (`gudusoftware/dbt_lineage` via `packages.yml` + `dbt deps`) is **optional** — install only if you want `gudu_lineage` dbt vars exposed to the manifest. Most users skip the dbt package entirely.
+
+ADR-007 captures the architectural reason the runtime cannot live inside macros.

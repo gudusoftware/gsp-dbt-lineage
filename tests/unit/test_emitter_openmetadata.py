@@ -22,10 +22,14 @@ def test_emits_one_request_per_upstream():
     }]}
     reqs = om.emit(doc)
     assert len(reqs) == 2
-    # Each request is a distinct edge
-    assert {r["edge"]["fromEntity"]["id"] for r in reqs} == {
+    # Each request is a distinct edge — OM resolves fullyQualifiedName -> UUID at ingest
+    assert {r["edge"]["fromEntity"]["fullyQualifiedName"] for r in reqs} == {
         "bigquery.src.t1", "bigquery.src.t2",
     }
+    # The 'id' (UUID) field must NOT be set — we don't have UUIDs at file-emit time.
+    for r in reqs:
+        assert "id" not in r["edge"]["fromEntity"]
+        assert "id" not in r["edge"]["toEntity"]
 
 
 def test_column_lineage_filters_by_upstream_table():
@@ -40,7 +44,7 @@ def test_column_lineage_filters_by_upstream_table():
         ],
     }]}
     reqs = om.emit(doc)
-    by_upstream = {r["edge"]["fromEntity"]["id"]: r for r in reqs}
+    by_upstream = {r["edge"]["fromEntity"]["fullyQualifiedName"]: r for r in reqs}
     cl1 = by_upstream["bigquery.src.t1"]["edge"]["lineageDetails"]["columnsLineage"]
     cl2 = by_upstream["bigquery.src.t2"]["edge"]["lineageDetails"]["columnsLineage"]
     # t1 column-lineage must only reference t1 columns, not t2.
@@ -55,5 +59,5 @@ def test_service_name_override():
         "columns": [{"name": "id", "upstream": [{"table": "src.t", "column": "id"}]}],
     }]}
     reqs = om.emit(doc, service_name="custom-svc")
-    assert reqs[0]["edge"]["fromEntity"]["id"].startswith("custom-svc.")
-    assert reqs[0]["edge"]["toEntity"]["id"].startswith("custom-svc.")
+    assert reqs[0]["edge"]["fromEntity"]["fullyQualifiedName"].startswith("custom-svc.")
+    assert reqs[0]["edge"]["toEntity"]["fullyQualifiedName"].startswith("custom-svc.")

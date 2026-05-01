@@ -77,10 +77,23 @@ def main(argv: list[str] | None = None) -> int:
         return EXIT_UNEXPECTED
 
 
+_EPILOG = """\
+Exit codes:
+   0  success
+   2  argument error (CLI usage)
+  10  artifact error (manifest unreadable, lineage doc not found)
+  11  backend error (rate-limit hit, all retries exhausted)
+  12  CI guard tripped (anonymous-in-CI refused, or `check` gate failed)
+  99  unexpected error
+"""
+
+
 def _build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="gsp-dbt-lineage",
         description="Reliable column-level lineage for dbt projects via Gudu SQLFlow.",
+        epilog=_EPILOG,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     p.add_argument("-v", "--verbose", action="count", default=0, help="-v: info, -vv: debug")
     sub = p.add_subparsers(dest="command", required=False)

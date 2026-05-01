@@ -1,15 +1,27 @@
 """OpenMetadata emitter (BETA).
 
 Reads our column_lineage.json document and emits a JSON file in the shape of
-OpenMetadata `AddLineageRequest` payloads, suitable for either:
-  - `metadata` CLI bulk ingest, or
-  - direct POST to `/api/v1/lineage` (one request per array element).
+OpenMetadata `AddLineageRequest` payloads. Each entry uses
+``fullyQualifiedName`` (not ``id``) so that the OpenMetadata server resolves
+the table reference at ingest time — we do NOT have UUIDs at file-emit time.
 
 Reference:
   https://docs.open-metadata.org/openmetadata-apis/apis/lineage-api
 
-This emitter is BETA in v0.x — Phase 4 will harden against a real OM instance
-before promoting to stable.
+How to consume the output:
+  - **Recommended**: feed via the OpenMetadata CLI (`metadata`) which resolves
+    fullyQualifiedName → entity UUID before POSTing.
+  - **Direct POST**: requires that the caller resolve UUIDs first and rewrite
+    the payload — the file emitter alone is insufficient for a direct API call.
+
+Caveats (BETA, hardening in Phase 4):
+  - Column FQNs in `lineageDetails.columnsLineage` are constructed from the
+    SQL parse alone; we do NOT look up the table's column list in the live
+    OpenMetadata catalog. Case-mismatches between SQL identifiers and
+    catalog metadata can cause OM to drop column-level edges silently.
+    Fix path: Phase 4 adds a `--validate-against-om <server>` mode.
+  - The emitter assumes a single OM service for all upstreams. Multi-service
+    lineage requires a richer config in Phase 4.
 """
 
 from __future__ import annotations
@@ -76,8 +88,8 @@ def emit(
                 })
             req = {
                 "edge": {
-                    "fromEntity": {"id": up_fqn, "type": "table"},
-                    "toEntity": {"id": target_fqn, "type": "table"},
+                    "fromEntity": {"fullyQualifiedName": up_fqn, "type": "table"},
+                    "toEntity": {"fullyQualifiedName": target_fqn, "type": "table"},
                 },
             }
             if cols_lineage:

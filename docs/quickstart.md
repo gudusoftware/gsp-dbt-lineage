@@ -4,14 +4,16 @@ Three steps from zero to column-lineage in your DataHub or OpenMetadata catalog.
 
 ## 1. Install
 
+The runtime CLI is a single `pip install`:
+
 ```bash
 pip install gsp-dbt-lineage
 ```
 
-(Optional — only needed if you also want to ship dbt-side macros for config exposure):
+The dbt-side package (`gudusoftware/dbt_lineage`) is **optional** — install it only if you want to expose `gudu_lineage` config to the manifest via dbt vars. Most users skip this step:
 
 ```yaml
-# packages.yml
+# packages.yml — only if you want dbt-side config exposure
 packages:
   - package: gudusoftware/dbt_lineage
     version: 0.0.1
@@ -21,15 +23,34 @@ packages:
 dbt deps
 ```
 
+## 1b. Get a backend identity (for any non-eval use)
+
+The CLI defaults to the **anonymous tier** (50 calls/day per IP) — fine for evaluation. For routine use you need credentials:
+
+- **Personal API key (free, 10k/month):** sign up at [docs.gudusoft.com/sign-up](https://docs.gudusoft.com/sign-up/). Set `GSP_USER_ID` and `GSP_SECRET_KEY` env vars.
+- **Self-hosted / air-gapped:** see [`docs/backend-modes.md`](backend-modes.md).
+
 ## 2. Run after `dbt build`
 
+Linux / macOS:
 ```bash
 dbt build
 gsp-dbt-lineage run \
     --manifest target/manifest.json \
     --backend authenticated \
-    --user-id $GSP_USER_ID \
-    --secret-key $GSP_SECRET_KEY \
+    --user-id "$GSP_USER_ID" \
+    --secret-key "$GSP_SECRET_KEY" \
+    --out target/gudu/column_lineage.json
+```
+
+Windows (PowerShell):
+```powershell
+dbt build
+gsp-dbt-lineage run `
+    --manifest target/manifest.json `
+    --backend authenticated `
+    --user-id $env:GSP_USER_ID `
+    --secret-key $env:GSP_SECRET_KEY `
     --out target/gudu/column_lineage.json
 ```
 
@@ -75,7 +96,20 @@ gsp-dbt-lineage emit openmetadata \
     --out target/gudu/openmetadata_lineage.json
 ```
 
-Then POST each entry to `/api/v1/lineage` or feed via custom ingestion.
+Each array entry uses `fullyQualifiedName` for the entity reference, which OpenMetadata resolves to a UUID at ingest time. Two ways to ingest:
+
+**A. OpenMetadata `metadata` CLI (recommended):** wrap the file in a custom ingestion source. The simplest pattern is to POST each entry yourself with a 5-line Python script:
+
+```python
+import json, requests
+OM = "http://your-om:8585/api/v1"
+TOKEN = "<your jwt>"
+for req in json.load(open("target/gudu/openmetadata_lineage.json")):
+    r = requests.put(f"{OM}/lineage", json=req, headers={"Authorization": f"Bearer {TOKEN}"})
+    r.raise_for_status()
+```
+
+**B. Custom OpenMetadata source plugin** (production): see `docs/known-limitations.md` §6. Phase 4 ships a first-class `metadata ingest`-compatible adapter.
 
 ## 4. CI gate — `check`
 

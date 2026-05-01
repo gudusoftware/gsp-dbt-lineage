@@ -62,25 +62,40 @@ runs:
 
     - name: Run lineage extraction
       shell: bash
+      # Route every input through the environment so they are not interpolated
+      # into the bash source by GitHub's expression engine — that would allow
+      # an input containing shell metacharacters to break command parsing.
       env:
         GSP_USER_ID: ${{ inputs.user-id }}
         GSP_SECRET_KEY: ${{ inputs.secret-key }}
+        INPUT_MANIFEST: ${{ inputs.manifest }}
+        INPUT_BACKEND: ${{ inputs.backend }}
+        INPUT_OUT: ${{ inputs.out }}
+        INPUT_URL: ${{ inputs.url }}
       run: |
-        ARGS=(--manifest "${{ inputs.manifest }}" --backend "${{ inputs.backend }}" --out "${{ inputs.out }}")
-        if [ -n "${{ inputs.url }}" ]; then ARGS+=(--url "${{ inputs.url }}"); fi
+        set -eu
+        ARGS=(--manifest "$INPUT_MANIFEST" --backend "$INPUT_BACKEND" --out "$INPUT_OUT")
+        if [ -n "${INPUT_URL:-}" ]; then ARGS+=(--url "$INPUT_URL"); fi
         gsp-dbt-lineage run "${ARGS[@]}"
 
     - name: Check coverage and regressions
       shell: bash
+      env:
+        INPUT_OUT: ${{ inputs.out }}
+        INPUT_MIN_NODE: ${{ inputs.min-node-coverage }}
+        INPUT_MIN_COLUMN: ${{ inputs.min-column-coverage }}
+        INPUT_BASELINE: ${{ inputs.baseline }}
+        INPUT_FAIL_ON_REGRESSION: ${{ inputs.fail-on-regression }}
       run: |
-        ARGS=(--lineage "${{ inputs.out }}")
-        if [ "${{ inputs.min-node-coverage }}" != "0" ]; then
-          ARGS+=(--min-node-coverage "${{ inputs.min-node-coverage }}")
+        set -eu
+        ARGS=(--lineage "$INPUT_OUT")
+        if [ "${INPUT_MIN_NODE:-0}" != "0" ]; then
+          ARGS+=(--min-node-coverage "$INPUT_MIN_NODE")
         fi
-        if [ "${{ inputs.min-column-coverage }}" != "0" ]; then
-          ARGS+=(--min-column-coverage "${{ inputs.min-column-coverage }}")
+        if [ "${INPUT_MIN_COLUMN:-0}" != "0" ]; then
+          ARGS+=(--min-column-coverage "$INPUT_MIN_COLUMN")
         fi
-        if [ -n "${{ inputs.baseline }}" ] && [ -f "${{ inputs.baseline }}" ] && [ "${{ inputs.fail-on-regression }}" = "true" ]; then
-          ARGS+=(--baseline "${{ inputs.baseline }}" --fail-on-regression)
+        if [ -n "${INPUT_BASELINE:-}" ] && [ -f "$INPUT_BASELINE" ] && [ "${INPUT_FAIL_ON_REGRESSION:-false}" = "true" ]; then
+          ARGS+=(--baseline "$INPUT_BASELINE" --fail-on-regression)
         fi
         gsp-dbt-lineage check "${ARGS[@]}"
