@@ -27,6 +27,10 @@ ADAPTER_TO_DBVENDOR: dict[str, str] = {
     "mysql": "dbvmysql",
     "oracle": "dbvoracle",
     "athena": "dbvathena",
+    "doris": "dbvdoris",
+    "vertica": "dbvvertica",
+    "teradata": "dbvteradata",
+    "db2": "dbvdb2",
 }
 
 

@@ -134,10 +134,13 @@ def _short_schema(url: str) -> str | None:
     """Pull the `vN` token out of a manifest schema URL.
 
     Example: https://schemas.getdbt.com/dbt/manifest/v12.json -> v12
+    Strips trailing slashes, query strings, and fragments before matching.
     """
     if not url:
         return None
-    last = url.rstrip("/").split("/")[-1]
+    # Strip trailing slash, ?query, #fragment.
+    head = url.rstrip("/").split("?", 1)[0].split("#", 1)[0]
+    last = head.split("/")[-1]
     if last.startswith("v") and last.endswith(".json"):
         return last[: -len(".json")]
     return None

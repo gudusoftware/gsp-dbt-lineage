@@ -50,6 +50,52 @@ def test_anonymous_network_error_raises_backend_unavailable():
             b.get_lineage("SELECT 1", "dbvbigquery")
 
 
+def test_token_url_derives_from_lineage_url_cloud():
+    b = AuthenticatedBackend(
+        url="https://api.gudusoft.com/gspLive_backend/sqlflow/generation/sqlflow/exportFullLineageAsJson",
+        user_id="x",
+        secret_key="y",
+    )
+    assert b._token_url() == "https://api.gudusoft.com/gspLive_backend/user/generateToken"
+
+
+def test_token_url_derives_from_lineage_url_self_hosted():
+    b = AuthenticatedBackend(
+        url="http://localhost:8165/api/gspLive_backend/sqlflow/generation/sqlflow/exportFullLineageAsJson",
+        user_id="x",
+        secret_key="y",
+    )
+    assert b._token_url() == "http://localhost:8165/api/gspLive_backend/user/generateToken"
+
+
+def test_token_url_raises_when_marker_missing():
+    b = AuthenticatedBackend(url="https://example.com/lineage", user_id="x", secret_key="y")
+    with pytest.raises(ParserError):
+        b._token_url()
+
+
+def test_authenticated_requires_user_id():
+    b = AuthenticatedBackend(url="https://api.gudusoft.com/gspLive_backend/x", user_id=None)
+    with pytest.raises(ParserError) as excinfo:
+        b.get_lineage("SELECT 1", "dbvbigquery")
+    assert "user-id" in str(excinfo.value)
+
+
+def test_anonymous_5xx_raises_parser_error_for_retry():
+    b = AnonymousBackend("https://api.example/lineage")
+    with patch("requests.post", return_value=_FakeResponse(503, {})):
+        with pytest.raises(ParserError) as excinfo:
+            b.get_lineage("SELECT 1", "dbvbigquery")
+    assert excinfo.value.status_code == 503
+
+
+def test_self_hosted_requires_url():
+    from gsp_dbt_lineage.parser_client import BackendConfig as _BC
+    cfg = _BC(mode="self_hosted")
+    with pytest.raises(ParserError):
+        _ = cfg.effective_url
+
+
 def test_authenticated_demo_user_bypasses_token_exchange():
     b = AuthenticatedBackend(
         url="https://api.gudusoft.com/gspLive_backend/x",

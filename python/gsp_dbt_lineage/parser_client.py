@@ -60,7 +60,6 @@ class BackendConfig:
     jar_path: str | None = None
     java_bin: str = "java"
     timeout_seconds: int = 120
-    transient_retries: int = 2  # for 5xx / connection reset; not for 4xx
 
     @property
     def effective_url(self) -> str:
@@ -68,7 +67,15 @@ class BackendConfig:
             return self.url
         if self.mode == "anonymous":
             return DEFAULT_ANONYMOUS_URL
-        return DEFAULT_AUTHENTICATED_URL
+        if self.mode == "authenticated":
+            return DEFAULT_AUTHENTICATED_URL
+        if self.mode == "self_hosted":
+            raise ParserError(
+                "self_hosted backend requires --url to point at your container's "
+                "/gspLive_backend/sqlflow/generation/sqlflow/exportFullLineageAsJson endpoint. "
+                "There is no default URL — self-hosted Docker URLs vary per deployment."
+            )
+        raise ParserError(f"effective_url is not meaningful for mode={self.mode!r}")
 
 
 class Backend(ABC):
@@ -111,6 +118,12 @@ class AnonymousBackend(Backend):
                 "https://docs.gudusoft.com/sign-up/",
                 status_code=429,
                 response_body=body,
+            )
+        if resp.status_code >= 500:
+            # Surface as ParserError so call_with_transient_retry can retry.
+            raise ParserError(
+                f"anonymous backend returned HTTP {resp.status_code}",
+                status_code=resp.status_code,
             )
         resp.raise_for_status()
         return resp.json()
@@ -188,10 +201,16 @@ class _TokenExchangeBackend(Backend):
         return self._token
 
     def get_lineage(self, sql: str, db_vendor: str, **kwargs) -> dict[str, Any]:
+        # Both authenticated and self_hosted require credentials. The demo
+        # user `gudu|0123456789` is special-cased inside _get_token().
+        if not self.user_id:
+            raise ParserError(
+                f"{self.label} requires --user-id (and --secret-key). "
+                f"Set GSP_USER_ID + GSP_SECRET_KEY or pass on the command line."
+            )
         payload = self._payload(sql, db_vendor, **kwargs)
-        if self.user_id:
-            payload["userId"] = self.user_id
-            payload["token"] = self._get_token()
+        payload["userId"] = self.user_id
+        payload["token"] = self._get_token()
 
         try:
             resp = requests.post(self.url, data=payload, timeout=self.timeout)
@@ -300,30 +319,30 @@ def _short_vendor(db_vendor: str) -> str:
 
 def create_backend(config: BackendConfig) -> Backend:
     """Factory: produce the right Backend instance for a config."""
-    if config.mode == "local_jar":
+    mode = config.mode
+    if mode == "local_jar":
         return LocalJarBackend(
             jar_path=config.jar_path or "",
             java_bin=config.java_bin,
             timeout=config.timeout_seconds,
         )
-    url = config.effective_url
-    if config.mode == "anonymous":
-        return AnonymousBackend(url=url, timeout=config.timeout_seconds)
-    if config.mode == "authenticated":
+    if mode == "anonymous":
+        return AnonymousBackend(url=config.effective_url, timeout=config.timeout_seconds)
+    if mode == "authenticated":
         return AuthenticatedBackend(
-            url=url,
+            url=config.effective_url,
             user_id=config.user_id,
             secret_key=config.secret_key,
             timeout=config.timeout_seconds,
         )
-    if config.mode == "self_hosted":
+    if mode == "self_hosted":
         return SelfHostedBackend(
-            url=url,
+            url=config.effective_url,
             user_id=config.user_id,
             secret_key=config.secret_key,
             timeout=config.timeout_seconds,
         )
-    raise ValueError(f"unknown backend mode: {config.mode}")
+    raise ValueError(f"unknown backend mode: {mode}")
 
 
 def call_with_transient_retry(

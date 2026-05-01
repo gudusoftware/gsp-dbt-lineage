@@ -21,8 +21,15 @@ CI_ENV_VARS = (
     "BUILDKITE",
     "TEAMCITY_VERSION",
     "JENKINS_URL",
-    "DBT_CLOUD_RUN_ID",  # dbt Cloud
-    "AZURE_HTTP_USER_AGENT",  # Azure Pipelines
+    "BITBUCKET_BUILD_NUMBER",  # Bitbucket Pipelines
+    "DRONE",                   # Drone CI
+    "WOODPECKER",              # Woodpecker CI
+    "BUDDY_WORKSPACE_ID",      # Buddy
+    "SEMAPHORE",               # Semaphore CI
+    "APPVEYOR",                # AppVeyor
+    "CODEBUILD_BUILD_ID",      # AWS CodeBuild
+    "DBT_CLOUD_RUN_ID",        # dbt Cloud
+    "AZURE_HTTP_USER_AGENT",   # Azure Pipelines
 )
 
 

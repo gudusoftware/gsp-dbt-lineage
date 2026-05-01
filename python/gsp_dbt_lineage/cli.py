@@ -237,19 +237,34 @@ def _cmd_doctor(args: argparse.Namespace) -> int:
     # 4. CI environment
     checks.append(("environment", True, f"CI detected: {is_ci_environment()}"))
 
-    # 5. Backend reachability (anonymous = HEAD against the URL; auth = GET token-endpoint)
-    cfg = BackendConfig(
-        mode=args.backend,
-        url=args.url,
-        jar_path=args.jar_path,
-    )
-    try:
-        backend = create_backend(cfg)
-        # Don't actually call the parser — we just report the configured shape.
-        url = cfg.effective_url if args.backend != "local_jar" else (args.jar_path or "<unset>")
-        checks.append(("backend", True, f"{args.backend} configured: {url}"))
-    except (ValueError, Exception) as e:
-        checks.append(("backend", False, f"backend create failed: {e}"))
+    # 5. Backend reachability — actually probe.
+    cfg = BackendConfig(mode=args.backend, url=args.url, jar_path=args.jar_path)
+    if args.backend == "local_jar":
+        jar_path = args.jar_path or ""
+        if not jar_path:
+            checks.append(("backend", False, "local_jar: --jar-path / GSP_JAR_PATH not set"))
+        elif not Path(jar_path).is_file():
+            checks.append(("backend", False, f"local_jar: jar not found at {jar_path}"))
+        else:
+            java_bin = shutil.which("java")
+            if java_bin:
+                checks.append(("backend", True, f"local_jar: jar OK ({jar_path}); java at {java_bin}"))
+            else:
+                checks.append(("backend", False, f"local_jar: jar OK ({jar_path}) but `java` not on PATH"))
+    else:
+        try:
+            url = cfg.effective_url
+        except Exception as e:
+            checks.append(("backend", False, f"{args.backend}: {e}"))
+        else:
+            try:
+                import requests
+                # HEAD often blocked on these endpoints; GET with short timeout instead.
+                resp = requests.get(url, timeout=10)
+                # Any HTTP response (including 4xx) means the endpoint is up.
+                checks.append(("backend", True, f"{args.backend} reachable: {url} (HTTP {resp.status_code})"))
+            except Exception as e:
+                checks.append(("backend", False, f"{args.backend} unreachable at {url}: {e}"))
 
     # Print the report
     width = max(len(name) for name, _, _ in checks)

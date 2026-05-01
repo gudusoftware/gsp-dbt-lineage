@@ -24,22 +24,21 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 
-_LINE_COMMENT = re.compile(r"--[^\n]*")
-_BLOCK_COMMENT = re.compile(r"/\*.*?\*/", re.DOTALL)
 _WHITESPACE = re.compile(r"\s+")
 
 
 def normalize_sql(sql: str) -> str:
     """Cheap SQL normalization for cache-key stability.
 
-    Strips line/block comments and collapses whitespace. Does NOT alter literals
-    or rewrite identifiers — the goal is "two SQL strings that mean the same to
-    GSP map to the same hash," not full semantic equivalence.
+    Collapses runs of whitespace to a single space. Does NOT strip comments —
+    a regex-based comment strip would corrupt SQL string literals like
+    `'hello -- world'` and produce silent cache collisions between
+    semantically different SQL. Comment-stripping requires SQL tokenization,
+    which is what GSP itself does — we don't reimplement it here. The
+    consequence: two SQL strings that differ only in their comments will
+    cache miss; that's a hit-rate cost, not a correctness risk.
     """
-    s = _LINE_COMMENT.sub("", sql)
-    s = _BLOCK_COMMENT.sub(" ", s)
-    s = _WHITESPACE.sub(" ", s)
-    return s.strip()
+    return _WHITESPACE.sub(" ", sql).strip()
 
 
 def cache_key(
