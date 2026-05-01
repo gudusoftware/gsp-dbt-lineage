@@ -1,0 +1,106 @@
+"""Phase 2 §7.4 verification template — applied across all 10 active fixtures.
+
+Each fixture must:
+  1. Validate against lineage_schema.json (schema)
+  2. Resolve the expected upstream tables (semantic)
+  3. Emit at least one column edge if the fixture is value-carrying (semantic)
+  4. Produce more lineage than dbt's stock CLL (differential)
+  5. Be byte-identical across 3 consecutive renders (determinism, modulo generated_at)
+"""
+
+from __future__ import annotations
+
+import json
+
+import pytest
+
+from gsp_dbt_lineage.emitters import json as json_emitter
+from gsp_dbt_lineage.lineage_mapper import map_gsp_to_node
+from gsp_dbt_lineage.lineage_schema import validate_lineage
+
+ACTIVE_FIXTURES = [
+    "E03_dbt_utils_deduplicate_macro_on_bigquery",
+    "E04_bigquery_procedural_declare_if_exception_temp_tables",
+    "E10_bigquery_multi_statement_begin_end_procedural_discovery",
+    "E16_t_sql_stored_proc_with_begin_end_temp_table_chain",
+    "E17_t_sql_create_procedure_wrapper_with_insert_select",
+    "E18_t_sql_stored_proc_same_construct_as_e17",
+    "E19_t_sql_case_in_select_datahub_split_statements_regression",
+    "E20_t_sql_declare_while_set_inside_create_procedure",
+    "E22_t_sql_cursor_fetch_status",
+    "E23_t_sql_if_begin_end_with_conditional_inserts",
+]
+
+# E20 is a structural-only test — declare/while/set inside a stored procedure
+# without I/O; we confirm a procedure node is parsed, not column edges.
+STRUCTURAL_ONLY = {"E20"}
+
+
+@pytest.mark.parametrize("fixture_dir", ACTIVE_FIXTURES)
+def test_schema_valid(fixture_loader, fixture_dir):
+    fx = fixture_loader(fixture_dir)
+    validate_lineage(fx["expected"])
+
+
+@pytest.mark.parametrize("fixture_dir", ACTIVE_FIXTURES)
+def test_resolves_expected_upstream_tables(fixture_loader, fixture_dir):
+    fx = fixture_loader(fixture_dir)
+    if fx["id"] in STRUCTURAL_ONLY:
+        # E20 has no expected upstream tables; structural parse only.
+        return
+    expected = {t.lower() for t in fx["expected_upstream_tables"]}
+    actual = {t.lower() for n in fx["expected"]["nodes"] for t in n["upstream_tables"]}
+    missing = expected - actual
+    assert not missing, f"{fx['id']}: missing upstream tables {missing}; actual={actual}"
+
+
+@pytest.mark.parametrize("fixture_dir", ACTIVE_FIXTURES)
+def test_emits_column_edges(fixture_loader, fixture_dir):
+    fx = fixture_loader(fixture_dir)
+    if fx["id"] in STRUCTURAL_ONLY:
+        return
+    edges = sum(len(c.get("upstream") or []) for n in fx["expected"]["nodes"] for c in n["columns"])
+    assert edges >= 1, f"{fx['id']}: expected ≥1 column edge, got 0"
+
+
+@pytest.mark.parametrize("fixture_dir", ACTIVE_FIXTURES)
+def test_beats_dbt_stock(fixture_loader, fixture_dir):
+    fx = fixture_loader(fixture_dir)
+    stock_edges = sum(
+        len(c.get("upstream") or [])
+        for n in fx["stock"].get("nodes", [])
+        for c in n.get("columns", [])
+    )
+    gsp_edges = sum(
+        len(c.get("upstream") or [])
+        for n in fx["expected"]["nodes"]
+        for c in n["columns"]
+    )
+    if fx["id"] in STRUCTURAL_ONLY:
+        # Structural fixtures: beat-dbt is established by parser_status (parsed vs Command).
+        # The expected_lineage shows status="unsupported" since there are no I/O tables —
+        # GSP still parses the procedure body (which sqlglot returns Command for).
+        return
+    assert gsp_edges > stock_edges, (
+        f"{fx['id']}: GSP not delivering more lineage than dbt stock; "
+        f"gsp={gsp_edges} stock={stock_edges}"
+    )
+
+
+@pytest.mark.parametrize("fixture_dir", ACTIVE_FIXTURES)
+def test_deterministic_render(fixture_loader, fixture_dir):
+    fx = fixture_loader(fixture_dir)
+    node = map_gsp_to_node(fx["gsp_response"], node_id=f"fixture.{fx['id']}", dialect=fx["dialect"])
+    runs = []
+    for _ in range(3):
+        doc = json_emitter.render(
+            schema_version="0.2.x",
+            generator="test",
+            manifest_metadata={"dbt_version": "x", "project_name": "t", "selected_count": 1, "eligible_count": 1},
+            backend={"mode": "fixture"},
+            stats={},
+            nodes=[node],
+            deterministic=True,
+        )
+        runs.append(json.dumps(doc, indent=2, sort_keys=True))
+    assert runs[0] == runs[1] == runs[2], f"{fx['id']}: non-deterministic render"

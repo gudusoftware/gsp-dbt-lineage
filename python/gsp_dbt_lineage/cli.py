@@ -16,17 +16,28 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from . import __version__
+from . import __schema_version__, __version__
 from .artifacts import ArtifactError, read_catalog, read_manifest, read_run_results
+from .cache import FileCache, cache_key
 from .ci import CIGuardError, enforce_anonymous_ci_guard, is_ci_environment
 from .compiled_sql import get_compiled_sql, is_eligible_for_lineage
+from .confidence import annotate_dynamic_sql
 from .dialect import UnknownAdapterError, resolve_dialect
+from .emitters import datahub as datahub_emitter
+from .emitters import json as json_emitter
+from .lineage_mapper import map_gsp_to_node
+from .lineage_schema import SchemaError, validate_lineage
 from .parser_client import (
     BackendConfig,
+    BackendUnavailable,
     DEFAULT_ANONYMOUS_URL,
     DEFAULT_AUTHENTICATED_URL,
+    ParserError,
+    RateLimitError,
+    call_with_transient_retry,
     create_backend,
 )
+from .redact import redact as _redact
 from .selector import select_nodes
 
 logger = logging.getLogger(__name__)
@@ -47,6 +58,8 @@ def main(argv: list[str] | None = None) -> int:
     try:
         if args.command == "run":
             return _cmd_run(args)
+        if args.command == "emit":
+            return _cmd_emit(args)
         if args.command == "doctor":
             return _cmd_doctor(args)
         if args.command == "version":
@@ -92,6 +105,18 @@ def _build_parser() -> argparse.ArgumentParser:
     r.add_argument("--deterministic", action="store_true",
                    help="Zero out generated_at and randomize-free; for byte-equal CI runs")
     r.add_argument("--cache-dir", default=".gsp-cache")
+    r.add_argument("--no-cache", action="store_true", help="Bypass the SQL-hash cache")
+    r.add_argument("--redact-literals", action="store_true",
+                   help="Replace string and numeric literals before sending SQL to the backend")
+    r.add_argument("--retries", type=int, default=2,
+                   help="Transient-failure retries (5xx, network reset)")
+
+    # --- emit ---
+    e = sub.add_parser("emit", help="Convert column_lineage.json to a target catalog format.")
+    e.add_argument("target", choices=["datahub"], help="Output format")
+    e.add_argument("--lineage", required=True, help="Path to column_lineage.json")
+    e.add_argument("--out", required=True, help="Output path")
+    e.add_argument("--env", default="PROD", help="DataHub environment name (PROD/DEV/...)")
 
     # --- doctor ---
     d = sub.add_parser("doctor", help="Environment diagnostics (Python, dbt, manifest, backend reachability).")
@@ -180,30 +205,164 @@ def _cmd_run(args: argparse.Namespace) -> int:
         print(f"error: {e}", file=sys.stderr)
         return EXIT_CI_GUARD
 
+    manifest_meta = {
+        "dbt_version": manifest.metadata.dbt_version,
+        "dbt_schema_version": manifest.metadata.dbt_schema_version,
+        "project_name": manifest.metadata.project_name,
+        "adapter_type": manifest.metadata.adapter_type,
+        "selected_count": len(selected_ids),
+        "eligible_count": eligible_count,
+    }
+
     if args.dry_run:
         out = {
-            "schema_version": "0.2.x",
+            "schema_version": __schema_version__,
             "generator": f"gsp-dbt-lineage {__version__}",
-            "manifest_metadata": {
-                "dbt_version": manifest.metadata.dbt_version,
-                "dbt_schema_version": manifest.metadata.dbt_schema_version,
-                "project_name": manifest.metadata.project_name,
-                "adapter_type": manifest.metadata.adapter_type,
-                "selected_count": len(selected_ids),
-                "eligible_count": eligible_count,
-            },
+            "manifest_metadata": manifest_meta,
             "backend": {"mode": args.backend, "dry_run": True},
             "plan": plan,
         }
         print(json.dumps(out, indent=2, sort_keys=True))
         return EXIT_OK
 
-    print(
-        "error: full `run` not yet implemented in Phase 1; use --dry-run. "
-        "Phase 2 (M1 BigQuery) wires the backend dispatch.",
-        file=sys.stderr,
+    # Wire the backend.
+    cfg = BackendConfig(
+        mode=args.backend,
+        url=args.url,
+        user_id=args.user_id,
+        secret_key=args.secret_key,
+        jar_path=args.jar_path,
+        java_bin=args.java_bin,
+        timeout_seconds=args.timeout,
     )
-    return EXIT_UNEXPECTED
+    try:
+        backend = create_backend(cfg)
+    except (ParserError, ValueError) as e:
+        print(f"error: {e}", file=sys.stderr)
+        return EXIT_BACKEND_ERROR
+
+    cache = None if args.no_cache else FileCache(args.cache_dir)
+
+    nodes_out: list[dict[str, Any]] = []
+    stats = {"parsed": 0, "partial": 0, "unsupported": 0, "failed": 0, "skipped": 0,
+             "total_columns": 0, "resolved_columns": 0}
+    parser_version = "unknown"
+
+    for entry in plan:
+        nid = entry["node_id"]
+        if not entry["eligible"]:
+            stats["skipped"] += 1
+            nodes_out.append({
+                "node_id": nid, "status": "skipped",
+                "confidence": "low", "dialect": entry["dialect"],
+                "upstream_tables": [], "downstream": [], "columns": [],
+                "unresolved": [{"reason": "skipped", "detail": entry["skip_reason"]}],
+                "warnings": [],
+            })
+            continue
+
+        node = manifest.nodes[nid]
+        sql = get_compiled_sql(node, Path(args.target_dir))
+        if sql is None:
+            stats["failed"] += 1
+            nodes_out.append({
+                "node_id": nid, "status": "failed",
+                "confidence": "low", "dialect": entry["dialect"],
+                "upstream_tables": [], "downstream": [], "columns": [],
+                "unresolved": [{"reason": "compiled_sql_unreadable"}], "warnings": [],
+            })
+            continue
+
+        if args.redact_literals:
+            sql = _redact(sql)
+
+        # Cache lookup.
+        ck = cache_key(sql, entry["dialect"], args.backend, parser_version, __version__)
+        cached = cache.get(ck) if cache else None
+        if cached is not None:
+            response = cached
+        else:
+            try:
+                response = call_with_transient_retry(
+                    backend, sql, entry["dialect"], retries=args.retries
+                )
+            except RateLimitError as e:
+                print(f"error: {e}", file=sys.stderr)
+                return EXIT_BACKEND_ERROR
+            except (BackendUnavailable, ParserError) as e:
+                logger.warning("node %s: %s", nid, e)
+                stats["failed"] += 1
+                nodes_out.append({
+                    "node_id": nid, "status": "failed",
+                    "confidence": "low", "dialect": entry["dialect"],
+                    "upstream_tables": [], "downstream": [], "columns": [],
+                    "unresolved": [{"reason": "parser_error", "detail": str(e)[:200]}],
+                    "warnings": [],
+                })
+                continue
+            if cache:
+                cache.put(ck, response)
+
+        # Map response → node.
+        node_out = map_gsp_to_node(response, node_id=nid, dialect=entry["dialect"])
+        node_out["downstream"] = sorted(manifest.child_map.get(nid, []) or [])
+        node_out = annotate_dynamic_sql(node_out, sql)
+
+        stats[node_out["status"]] = stats.get(node_out["status"], 0) + 1
+        stats["total_columns"] += len(node_out["columns"])
+        stats["resolved_columns"] += sum(1 for c in node_out["columns"] if c.get("upstream"))
+        nodes_out.append(node_out)
+
+    if stats["total_columns"]:
+        stats["coverage"] = round(stats["resolved_columns"] / stats["total_columns"], 4)
+    else:
+        stats["coverage"] = 0.0
+
+    backend_block = {
+        "mode": args.backend,
+        "parser_version": parser_version,
+        "cli_version": __version__,
+    }
+    if cache:
+        backend_block["cache_stats"] = cache.stats()
+
+    doc = json_emitter.render(
+        schema_version=__schema_version__,
+        generator=f"gsp-dbt-lineage {__version__}",
+        manifest_metadata=manifest_meta,
+        backend=backend_block,
+        stats=stats,
+        nodes=nodes_out,
+        deterministic=args.deterministic,
+    )
+
+    try:
+        validate_lineage(doc)
+    except SchemaError as e:
+        print(f"error: emitted document failed schema validation: {e}", file=sys.stderr)
+        return EXIT_UNEXPECTED
+
+    json_emitter.write(doc, args.out)
+    print(f"wrote {args.out} — {stats['parsed']} parsed, {stats['partial']} partial, "
+          f"{stats['failed']} failed, {stats['skipped']} skipped, "
+          f"coverage {stats['coverage']:.0%}")
+    return EXIT_OK
+
+
+def _cmd_emit(args: argparse.Namespace) -> int:
+    """Convert column_lineage.json -> target catalog format."""
+    p = Path(args.lineage)
+    if not p.is_file():
+        print(f"error: lineage doc not found: {p}", file=sys.stderr)
+        return EXIT_ARTIFACT_ERROR
+    doc = json.loads(p.read_text(encoding="utf-8"))
+    if args.target == "datahub":
+        mcps = datahub_emitter.emit(doc, env=args.env)
+        datahub_emitter.write(mcps, args.out)
+        print(f"wrote {args.out} — {len(mcps)} MCPs")
+        return EXIT_OK
+    print(f"error: unsupported target {args.target!r}", file=sys.stderr)
+    return EXIT_ARGUMENT_ERROR
 
 
 def _cmd_doctor(args: argparse.Namespace) -> int:

@@ -1,0 +1,10 @@
+id: E19
+label: framework-active
+dialect: tsql
+dbvendor: dbvmssql
+description: "T-SQL CASE in SELECT \u2014 DataHub split_statements regression"
+sqlglot_phase01_result: SQLGLOT_PARSES_FRAMEWORK_BUG
+expected_upstream_tables:
+- mySchema.myTable
+expected_downstream_tables: []
+source_evidence_index: materials/dbt-lineage-evidence/index.yml

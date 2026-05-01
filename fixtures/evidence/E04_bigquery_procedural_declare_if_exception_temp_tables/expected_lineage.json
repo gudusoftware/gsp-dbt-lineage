@@ -1,0 +1,74 @@
+{
+  "backend": {
+    "cli_version": "0.0.1",
+    "mode": "fixture",
+    "parser_version": "phase-0.4-cache"
+  },
+  "generator": "build_fixtures.py",
+  "manifest_metadata": {
+    "adapter_type": "bigquery",
+    "dbt_version": "fixture",
+    "eligible_count": 1,
+    "project_name": "fixture",
+    "selected_count": 1
+  },
+  "nodes": [
+    {
+      "columns": [
+        {
+          "confidence": "high",
+          "name": "ID",
+          "transform": "direct",
+          "upstream": [
+            {
+              "column": "ID",
+              "table": "project.dataset.src"
+            },
+            {
+              "column": "ID",
+              "table": "t1"
+            }
+          ]
+        },
+        {
+          "confidence": "high",
+          "name": "NAME",
+          "transform": "direct",
+          "upstream": [
+            {
+              "column": "NAME",
+              "table": "project.dataset.src"
+            },
+            {
+              "column": "NAME",
+              "table": "t1"
+            }
+          ]
+        }
+      ],
+      "confidence": "high",
+      "dialect": "dbvbigquery",
+      "downstream": [],
+      "node_id": "fixture.E04",
+      "status": "parsed",
+      "unresolved": [],
+      "upstream_tables": [
+        "project.dataset.src",
+        "project.dataset.tgt",
+        "t1"
+      ],
+      "warnings": []
+    }
+  ],
+  "schema_version": "0.2.x",
+  "stats": {
+    "coverage": 1.0,
+    "failed": 0,
+    "parsed": 1,
+    "partial": 0,
+    "resolved_columns": 2,
+    "skipped": 0,
+    "total_columns": 2,
+    "unsupported": 0
+  }
+}

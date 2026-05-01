@@ -1,0 +1,6 @@
+{
+  "detail": "",
+  "id": "E19",
+  "label": "framework-active",
+  "summary": "sqlglot parse fine; DataHub split_statements still splits on END keyword"
+}

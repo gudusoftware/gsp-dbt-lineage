@@ -1,0 +1,6 @@
+{
+  "detail": "",
+  "id": "E03",
+  "label": "active",
+  "summary": "STAR over ARRAY_AGG(struct)[OFFSET(0)] not expanded; dbt CLL still empty"
+}

@@ -1,0 +1,59 @@
+{
+  "backend": {
+    "cli_version": "0.0.1",
+    "mode": "fixture",
+    "parser_version": "phase-0.4-cache"
+  },
+  "generator": "build_fixtures.py",
+  "manifest_metadata": {
+    "adapter_type": "tsql",
+    "dbt_version": "fixture",
+    "eligible_count": 1,
+    "project_name": "fixture",
+    "selected_count": 1
+  },
+  "nodes": [
+    {
+      "columns": [
+        {
+          "confidence": "high",
+          "name": "COLUMNNAME",
+          "transform": "direct",
+          "upstream": [
+            {
+              "column": "COLUMNNAME",
+              "table": "#temp"
+            },
+            {
+              "column": "COLUMNNAME",
+              "table": "schName.sourceTable"
+            }
+          ]
+        }
+      ],
+      "confidence": "high",
+      "dialect": "dbvmssql",
+      "downstream": [],
+      "node_id": "fixture.E16",
+      "status": "parsed",
+      "unresolved": [],
+      "upstream_tables": [
+        "#temp",
+        "schName.sourceTable",
+        "schName.targetTable"
+      ],
+      "warnings": []
+    }
+  ],
+  "schema_version": "0.2.x",
+  "stats": {
+    "coverage": 1.0,
+    "failed": 0,
+    "parsed": 1,
+    "partial": 0,
+    "resolved_columns": 1,
+    "skipped": 0,
+    "total_columns": 1,
+    "unsupported": 0
+  }
+}

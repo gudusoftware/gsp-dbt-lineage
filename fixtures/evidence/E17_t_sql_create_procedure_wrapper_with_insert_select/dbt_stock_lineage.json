@@ -1,0 +1,22 @@
+{
+  "generator": "dbt-stock-cll-baseline (phase-0.1)",
+  "nodes": [
+    {
+      "columns": [],
+      "confidence": "low",
+      "dialect": "dbvmssql",
+      "downstream": [],
+      "node_id": "fixture.E17",
+      "status": "unsupported",
+      "unresolved": [
+        {
+          "phase01_result": null,
+          "reason": "sqlglot_baseline"
+        }
+      ],
+      "upstream_tables": [],
+      "warnings": []
+    }
+  ],
+  "schema_version": "0.2.x"
+}

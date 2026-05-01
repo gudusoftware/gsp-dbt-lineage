@@ -1,0 +1,10 @@
+id: E03
+label: active
+dialect: bigquery
+dbvendor: dbvbigquery
+description: dbt-utils deduplicate macro on BigQuery
+sqlglot_phase01_result: STAR_NOT_EXPANDED
+expected_upstream_tables:
+- all_articles
+expected_downstream_tables: []
+source_evidence_index: materials/dbt-lineage-evidence/index.yml

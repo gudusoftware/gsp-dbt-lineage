@@ -1,0 +1,11 @@
+id: E16
+label: partial
+dialect: tsql
+dbvendor: dbvmssql
+description: T-SQL stored proc with BEGIN..END + temp table chain
+sqlglot_phase01_result: PARSES_TO_CREATE_BODY_LINEAGE_UNVERIFIED
+expected_upstream_tables:
+- schName.sourceTable
+expected_downstream_tables:
+- schName.targetTable
+source_evidence_index: materials/dbt-lineage-evidence/index.yml

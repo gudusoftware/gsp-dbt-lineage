@@ -1,0 +1,6 @@
+{
+  "detail": "",
+  "id": "E10",
+  "label": "active",
+  "summary": "BEGIN..END parses as Command \u2014 multi-statement table discovery still broken"
+}

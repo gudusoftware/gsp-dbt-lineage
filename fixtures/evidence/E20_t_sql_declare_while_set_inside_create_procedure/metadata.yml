@@ -1,0 +1,9 @@
+id: E20
+label: active
+dialect: tsql
+dbvendor: dbvmssql
+description: T-SQL DECLARE/WHILE/SET inside CREATE PROCEDURE
+sqlglot_phase01_result: COMMAND_FALLBACK
+expected_upstream_tables: []
+expected_downstream_tables: []
+source_evidence_index: materials/dbt-lineage-evidence/index.yml
