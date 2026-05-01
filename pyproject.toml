@@ -36,6 +36,10 @@ dev = [
     "pytest>=7.0",
     "pytest-mock>=3.10",
     "responses>=0.23",
+    # Required by tests/integration/test_sqlglot_regression_canaries.py — these
+    # are the Phase 4 §9.1 regression-fixture-corpus tests that must run in
+    # CI per the runbook. Pin to the version the v1 plan was scoped against.
+    "sqlglot>=30.6.0,<31.0",
 ]
 datahub = [
     "acryl-datahub>=0.12.0",
@@ -44,11 +48,12 @@ openmetadata = [
     "openmetadata-ingestion>=1.4.0",
 ]
 jvm = [
-    # Helper utilities for `--backend local_jar` mode. The actual JRE/JDK
-    # must be installed at the system level (the GSP JAR shells out via
-    # `java -cp ...`) — these extras only add Python helpers that detect
-    # JVM availability and version.
-    "jpype1>=1.4 ; python_version >= '3.9' and python_version < '3.13'",
+    # Reserved. There are no Python deps required for `--backend local_jar`:
+    # the implementation uses `subprocess.run(["java", "-cp", <jar>, ...])`,
+    # so the only system requirement is a JRE (Java 8+) on PATH. This extra
+    # is kept declared for forward-compat — Phase 4 task 4.5 deferred a
+    # decision on JPype-based bundling. Users do NOT need to install
+    # `gsp-dbt-lineage[jvm]` today; install a JRE instead.
 ]
 
 [project.urls]

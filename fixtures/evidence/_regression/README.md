@@ -1,6 +1,6 @@
 # `_regression/` — sqlglot regression canaries
 
-These 11 fixtures were `active` failures cited in DataHub / OpenMetadata / sqlglot issues at one point. As of sqlglot 30.6.0 they all pass — the parser handles them correctly. We carry them as **regression canaries**: if a future sqlglot release breaks any of them, our CI here will turn red and we'll know we have a new active wedge.
+These 11 fixtures were `active` failures cited in DataHub / OpenMetadata / sqlglot issues at one point. As of sqlglot 30.6.0 the *simplified repro* of each construct passes (the original issue may have included a more elaborate scenario where edge cases still fail). We carry them as **regression canaries**: if a future sqlglot release breaks the simplified case, our CI here will turn red and we'll know we have a new active wedge.
 
 These rows are NOT marketing-eligible per `tools/check_launch_copy.py`. They are NOT part of the v1 launch claims. They exist exclusively as a tripwire.
 
@@ -21,6 +21,10 @@ These rows are NOT marketing-eligible per `tools/check_launch_copy.py`. They are
 Test runner: `tests/integration/test_sqlglot_regression_canaries.py` (Phase 4 task 4.1).
 
 If a canary fails:
-1. Promote the row to `active` in `materials/dbt-lineage-evidence/index.yml` (companion ops repo).
-2. Add an active fixture under `fixtures/evidence/<row_id>_*/`.
-3. Update launch copy via `tools/check_launch_copy.py` (Phase 5).
+
+1. **Pin and bisect** — pin the failing sqlglot version in `pyproject.toml [dev]` and run `pip install sqlglot==<prior>` locally; bisect to the offending sqlglot release. Note the commit/PR.
+2. **File or update upstream** — open a sqlglot issue (or comment on the existing one in the canary docstring) with the pinned-version repro.
+3. **Promote the row to `active`** in `materials/dbt-lineage-evidence/index.yml` (companion ops repo).
+4. **Add an active fixture** under `fixtures/evidence/<row_id>_*/` with input.sql + expected_lineage.json (use `tools/build_fixtures.py`).
+5. **Update launch copy** — re-run `tools/check_launch_copy.py` against README + docs + blog drafts; the linter will refuse PR merge if the row is now `regression` and still cited.
+6. **Land the active fixture** in v0.x.y patch release; update CHANGELOG to call out the upstream regression.
