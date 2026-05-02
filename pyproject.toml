@@ -58,8 +58,8 @@ jvm = [
 
 [project.urls]
 Homepage = "https://sqlparser.com/dbt-lineage/"
-Repository = "https://github.com/gudusoftware/dbt-lineage"
-Issues = "https://github.com/gudusoftware/dbt-lineage/issues"
+Repository = "https://github.com/gudusoftware/gsp-dbt-lineage"
+Issues = "https://github.com/gudusoftware/gsp-dbt-lineage/issues"
 Documentation = "https://sqlparser.com/dbt-lineage/"
 
 [project.scripts]

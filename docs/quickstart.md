@@ -1,4 +1,4 @@
-# Quickstart — `gudusoftware/dbt-lineage`
+# Quickstart — `gudusoftware/gsp-dbt-lineage`
 
 Three steps from zero to column-lineage in your DataHub or OpenMetadata catalog.
 
@@ -10,12 +10,12 @@ The runtime CLI is a single `pip install`:
 pip install gsp-dbt-lineage
 ```
 
-The dbt-side package (`gudusoftware/dbt_lineage`) is **optional** — install it only if you want to expose `gudu_lineage` config to the manifest via dbt vars. Most users skip this step:
+The dbt-side package (`gudusoftware/gsp_dbt_lineage`) is **optional** — install it only if you want to expose `gudu_lineage` config to the manifest via dbt vars. Most users skip this step:
 
 ```yaml
 # packages.yml — only if you want dbt-side config exposure
 packages:
-  - package: gudusoftware/dbt_lineage
+  - package: gudusoftware/gsp_dbt_lineage
     version: 0.0.1
 ```
 
@@ -128,7 +128,7 @@ This exits non-zero if:
 - Any node lost column-lineage edges relative to `--baseline`.
 - Any node has `status: failed` (auto-applied in CI environments).
 
-A drop-in GitHub Action lives at `gudusoftware/dbt-lineage` — see `docs/ci-integration.md`.
+A drop-in GitHub Action lives at `gudusoftware/gsp-dbt-lineage` — see `docs/ci-integration.md`.
 
 ## Backend modes
 

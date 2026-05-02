@@ -1,4 +1,4 @@
-name: 'gudusoftware/dbt-lineage CI check'
+name: 'gudusoftware/gsp-dbt-lineage CI check'
 description: 'Run gsp-dbt-lineage check on a dbt project to gate CI on column-lineage coverage and regressions.'
 branding:
   icon: 'check-square'

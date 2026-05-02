@@ -1,4 +1,4 @@
-# `gudusoftware/dbt-lineage`
+# `gudusoftware/gsp-dbt-lineage`
 
 > **Reliable column-level lineage for dbt → DataHub / OpenMetadata, where sqlglot can't reach.**
 >
@@ -8,7 +8,7 @@
 
 dbt's stock column-level lineage is sqlglot-based, and sqlglot silently fails on a class of dbt-real SQL constructs. Empirically (Phase 0.4 PoC, see [`materials/dbt-lineage-evidence/poc-dossier.md`](https://github.com/gudusoftware/gudu-agent-team) in the companion ops repo):
 
-| Where sqlglot returns 0 column edges | What `gudusoftware/dbt-lineage` does |
+| Where sqlglot returns 0 column edges | What `gudusoftware/gsp-dbt-lineage` does |
 |---|---|
 | BigQuery `dbt-utils.deduplicate` macro | Resolves `all_articles → analytics.deduplicated_articles` with 5 column edges |
 | BigQuery procedural SQL (DECLARE/IF/EXCEPTION/temp tables) | Traces `src → temp → tgt` with 8 column edges |
@@ -35,7 +35,7 @@ See `docs/dbt-lineage/implementation-plan.md` in the companion ops repo for the 
 
 Two halves under one repo:
 
-1. **dbt package** (`gudusoftware/dbt_lineage`) — declarative-only macros. Installed via `packages.yml`. No runtime side effects.
+1. **dbt package** (`gudusoftware/gsp_dbt_lineage`) — declarative-only macros. Installed via `packages.yml`. No runtime side effects.
 2. **Python CLI** (`gsp-dbt-lineage`) — reads `target/manifest.json` post-`dbt build`, dispatches compiled SQL to GSP/SQLFlow via four backend modes (anonymous / authenticated / self-hosted Docker / local JAR), emits `target/gudu/column_lineage.json` + DataHub MCP / OpenMetadata sidecars.
 
 ## Install (planned, not yet on PyPI)
@@ -46,7 +46,7 @@ pip install gsp-dbt-lineage
 
 # dbt package
 echo "packages:
-  - package: gudusoftware/dbt_lineage
+  - package: gudusoftware/gsp_dbt_lineage
     version: 0.0.1" >> packages.yml
 dbt deps
 ```

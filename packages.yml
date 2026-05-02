@@ -1,4 +1,4 @@
-# Runtime dependencies of the gudusoftware/dbt_lineage package itself.
+# Runtime dependencies of the gudusoftware/gsp_dbt_lineage package itself.
 # Empty by design — see ADR-007: the dbt-side is declarative-only, no
 # transitive dbt-package dependencies.
 packages: []

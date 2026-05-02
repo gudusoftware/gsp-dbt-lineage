@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to `gudusoftware/dbt-lineage` will be documented in this file.
+All notable changes to `gudusoftware/gsp-dbt-lineage` will be documented in this file.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Schema: [SemVer](https://semver.org/).
 
 ## [Unreleased]

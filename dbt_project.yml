@@ -1,8 +1,8 @@
-# dbt package manifest for `gudusoftware/dbt_lineage`.
+# dbt package manifest for `gudusoftware/gsp_dbt_lineage`.
 # This package ships only declarative macros (config helpers + version metadata).
 # Runtime — HTTP backend dispatch, cache, lineage emission — lives in the
 # companion Python CLI `gsp-dbt-lineage` (installed via pip). See ADR-007.
-name: 'gudusoftware_dbt_lineage'
+name: 'gudusoftware_gsp_dbt_lineage'
 version: '0.0.1'
 config-version: 2
 

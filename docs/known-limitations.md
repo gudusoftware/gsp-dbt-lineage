@@ -46,6 +46,6 @@ In the rare case where a single dbt model produces multiple top-level result-set
 
 ## 8. Two-part install (only if using the dbt-side macros)
 
-The runtime CLI is a single `pip install gsp-dbt-lineage`. The dbt-side package (`gudusoftware/dbt_lineage` via `packages.yml` + `dbt deps`) is **optional** — install only if you want `gudu_lineage` dbt vars exposed to the manifest. Most users skip the dbt package entirely.
+The runtime CLI is a single `pip install gsp-dbt-lineage`. The dbt-side package (`gudusoftware/gsp_dbt_lineage` via `packages.yml` + `dbt deps`) is **optional** — install only if you want `gudu_lineage` dbt vars exposed to the manifest. Most users skip the dbt package entirely.
 
 ADR-007 captures the architectural reason the runtime cannot live inside macros.
