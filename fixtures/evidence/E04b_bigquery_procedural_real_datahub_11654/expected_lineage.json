@@ -1,0 +1,302 @@
+{
+  "backend": {
+    "cli_version": "0.0.1",
+    "mode": "fixture",
+    "parser_version": "local-jar-4.1.0.15"
+  },
+  "generator": "build_fixtures.py",
+  "manifest_metadata": {
+    "adapter_type": "bigquery",
+    "dbt_version": "fixture",
+    "eligible_count": 1,
+    "project_name": "fixture",
+    "selected_count": 1
+  },
+  "nodes": [
+    {
+      "columns": [
+        {
+          "confidence": "high",
+          "name": "*",
+          "transform": "direct",
+          "upstream": [
+            {
+              "column": "*",
+              "table": "project.dataset.view_name"
+            },
+            {
+              "column": "EVENTTIMESTAMP",
+              "table": "project.dataset.view_name"
+            },
+            {
+              "column": "FLAGFIELD",
+              "table": "project.dataset.view_name"
+            },
+            {
+              "column": "FOREIGNKEYFIELD",
+              "table": "project.dataset.view_name"
+            },
+            {
+              "column": "IDFIELD",
+              "table": "project.dataset.view_name"
+            },
+            {
+              "column": "STARTDATE",
+              "table": "project.dataset.view_name"
+            }
+          ]
+        },
+        {
+          "confidence": "high",
+          "name": "BUSINESSDATE",
+          "transform": "direct",
+          "upstream": [
+            {
+              "column": "BUSINESSDATE",
+              "table": "temp_table_delta"
+            }
+          ]
+        },
+        {
+          "confidence": "high",
+          "name": "EMAIL",
+          "transform": "direct",
+          "upstream": [
+            {
+              "column": "EMAIL",
+              "table": "temp_table_delta"
+            }
+          ]
+        },
+        {
+          "confidence": "high",
+          "name": "EVENTTIMESTAMP",
+          "transform": "direct",
+          "upstream": [
+            {
+              "column": "EVENTTIMESTAMP",
+              "table": "project.dataset.view_name"
+            },
+            {
+              "column": "EVENTTIMESTAMP",
+              "table": "temp_table_delta"
+            }
+          ]
+        },
+        {
+          "confidence": "high",
+          "name": "FLAGFIELD",
+          "transform": "direct",
+          "upstream": [
+            {
+              "column": "FLAGFIELD",
+              "table": "project.dataset.view_name"
+            }
+          ]
+        },
+        {
+          "confidence": "high",
+          "name": "FOREIGNKEYFIELD",
+          "transform": "direct",
+          "upstream": [
+            {
+              "column": "FOREIGNKEYFIELD",
+              "table": "project.dataset.view_name"
+            }
+          ]
+        },
+        {
+          "confidence": "high",
+          "name": "IDFIELD",
+          "transform": "direct",
+          "upstream": [
+            {
+              "column": "IDFIELD",
+              "table": "project.dataset.view_name"
+            },
+            {
+              "column": "IDFIELD",
+              "table": "temp_table_delta"
+            }
+          ]
+        },
+        {
+          "confidence": "high",
+          "name": "SNAPSHOTTIMESTAMP",
+          "transform": "direct",
+          "upstream": [
+            {
+              "column": "SNAPSHOTTIMESTAMP",
+              "table": "project.dataset.view_name"
+            }
+          ]
+        },
+        {
+          "confidence": "high",
+          "name": "STARTDATE",
+          "transform": "direct",
+          "upstream": [
+            {
+              "column": "STARTDATE",
+              "table": "project.dataset.view_name"
+            }
+          ]
+        },
+        {
+          "confidence": "high",
+          "name": "USERID",
+          "transform": "direct",
+          "upstream": [
+            {
+              "column": "USERID",
+              "table": "temp_table_delta"
+            }
+          ]
+        }
+      ],
+      "confidence": "high",
+      "dialect": "dbvbigquery",
+      "downstream": [],
+      "evidence": {
+        "procedural": {
+          "column_edge_count": 11,
+          "process_count": 2,
+          "write_target_count": 2,
+          "write_targets": [
+            {
+              "columns": [
+                "BUSINESSDATE",
+                "EMAIL",
+                "EVENTTIMESTAMP",
+                "IDFIELD",
+                "USERID"
+              ],
+              "edges": [
+                {
+                  "from": {
+                    "column": "BUSINESSDATE",
+                    "table": "temp_table_delta"
+                  },
+                  "target_column": "BUSINESSDATE"
+                },
+                {
+                  "from": {
+                    "column": "EMAIL",
+                    "table": "temp_table_delta"
+                  },
+                  "target_column": "EMAIL"
+                },
+                {
+                  "from": {
+                    "column": "EVENTTIMESTAMP",
+                    "table": "temp_table_delta"
+                  },
+                  "target_column": "EVENTTIMESTAMP"
+                },
+                {
+                  "from": {
+                    "column": "IDFIELD",
+                    "table": "temp_table_delta"
+                  },
+                  "target_column": "IDFIELD"
+                },
+                {
+                  "from": {
+                    "column": "USERID",
+                    "table": "temp_table_delta"
+                  },
+                  "target_column": "USERID"
+                }
+              ],
+              "from": [
+                "temp_table_delta"
+              ],
+              "subType": "temp_table",
+              "table": "final_output"
+            },
+            {
+              "columns": [
+                "EVENTTIMESTAMP",
+                "FLAGFIELD",
+                "FOREIGNKEYFIELD",
+                "IDFIELD",
+                "SNAPSHOTTIMESTAMP",
+                "STARTDATE"
+              ],
+              "edges": [
+                {
+                  "from": {
+                    "column": "EVENTTIMESTAMP",
+                    "table": "project.dataset.view_name"
+                  },
+                  "target_column": "EVENTTIMESTAMP"
+                },
+                {
+                  "from": {
+                    "column": "FLAGFIELD",
+                    "table": "project.dataset.view_name"
+                  },
+                  "target_column": "FLAGFIELD"
+                },
+                {
+                  "from": {
+                    "column": "FOREIGNKEYFIELD",
+                    "table": "project.dataset.view_name"
+                  },
+                  "target_column": "FOREIGNKEYFIELD"
+                },
+                {
+                  "from": {
+                    "column": "IDFIELD",
+                    "table": "project.dataset.view_name"
+                  },
+                  "target_column": "IDFIELD"
+                },
+                {
+                  "from": {
+                    "column": "SNAPSHOTTIMESTAMP",
+                    "table": "project.dataset.view_name"
+                  },
+                  "target_column": "SNAPSHOTTIMESTAMP"
+                },
+                {
+                  "from": {
+                    "column": "STARTDATE",
+                    "table": "project.dataset.view_name"
+                  },
+                  "target_column": "STARTDATE"
+                }
+              ],
+              "from": [
+                "project.dataset.view_name"
+              ],
+              "subType": "temp_table",
+              "table": "temp_table"
+            }
+          ]
+        }
+      },
+      "node_id": "fixture.E04b",
+      "status": "parsed",
+      "unresolved": [],
+      "upstream_tables": [
+        "final_output",
+        "project.dataset.view_name",
+        "temp_table",
+        "temp_table_delta"
+      ],
+      "warnings": []
+    }
+  ],
+  "schema_version": "0.2.x",
+  "stats": {
+    "coverage": 1.0,
+    "failed": 0,
+    "parsed": 1,
+    "partial": 0,
+    "resolved_columns": 10,
+    "skipped": 0,
+    "total_columns": 10,
+    "unsupported": 0
+  }
+}

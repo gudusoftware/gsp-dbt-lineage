@@ -1,0 +1,23 @@
+{
+  "generator": "dbt-stock-cll-baseline (sqlglot-30.6.0 on real datahub#11654 SQL)",
+  "nodes": [
+    {
+      "columns": [],
+      "confidence": "low",
+      "dialect": "dbvbigquery",
+      "downstream": [],
+      "node_id": "fixture.E04b",
+      "status": "failed",
+      "unresolved": [
+        {
+          "reason": "sqlglot_baseline",
+          "phase01_result": "PARSE_ERROR",
+          "detail": "sqlglot.parse_one(read='bigquery') raises Required keyword: 'this' missing for <class 'sqlglot.expressions.functions.If'> on the nested IF (SELECT COUNT(1) FROM temp_table_delta) > 0 THEN block; preceding CALL and outer IF blocks fall back to Command first"
+        }
+      ],
+      "upstream_tables": [],
+      "warnings": []
+    }
+  ],
+  "schema_version": "0.2.x"
+}

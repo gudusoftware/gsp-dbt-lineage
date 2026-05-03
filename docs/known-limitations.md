@@ -40,11 +40,26 @@ We do NOT mutate `manifest.json`. Output is sidecar only (`target/gudu/column_li
 
 In the rare case where a single dbt model produces multiple top-level result-sets that each project a column with the same name (e.g., a UNION of two SELECTs both projecting `id`), the current mapper merges their upstream lineage. For most dbt SQL this is the right answer; for unusual patterns the merged lineage may overstate provenance. Tracked for Phase 3+.
 
-## 7. Local-JAR JVM cold start
+For procedural BigQuery / T-SQL scripts that write to multiple TEMP TABLE / real-table targets in a single compiled statement (e.g., the `datahub#11654` pattern — `CREATE OR REPLACE TEMP TABLE temp_table AS …` followed by `CREATE OR REPLACE TEMP TABLE final_output AS …` inside one procedural script), same-named output columns also collapse in the flat `columns` list. The per-target attribution is preserved in `node.evidence.procedural.write_targets`, which is the authoritative receipt — emitters and reviewers should consult that block when the procedural pattern is in play. See fixture `E04b_bigquery_procedural_real_datahub_11654` for the worked example.
+
+## 7. Opaque CALL / stored-procedure bodies
+
+When a BigQuery `CALL <db.proc>(args)` or T-SQL `EXEC <proc>` is invoked but
+the called procedure's body is not present in the same compilation unit,
+GSP records the call site but does not trace lineage from the procedure
+into any output variables it populates. In `datahub#11654` the script's
+`CALL internal_project.get_partitions(..., partitions)` populates the
+`partitions` STRUCT, which is then read in a downstream `IF ARRAY_LENGTH(partitions.dates) > 0` predicate — the upstream of `partitions` is
+opaque to lineage. The headline write-target edges (`temp_table` ←
+`view_name`, `final_output` ← `temp_table_delta`) are still recovered
+correctly. Workaround: include the called procedure's body in the same
+parse if available.
+
+## 8. Local-JAR JVM cold start
 
 `--backend local_jar` shells out to a Java subprocess per call. Cold start is ~0.5–1s. For projects above ~100 nodes, prefer `--backend self_hosted` (one container, persistent JVM).
 
-## 8. Two-part install (only if using the dbt-side macros)
+## 9. Two-part install (only if using the dbt-side macros)
 
 The runtime CLI is a single `pip install gsp-dbt-lineage`. The dbt-side package (`gudusoftware/gsp_dbt_lineage` via `packages.yml` + `dbt deps`) is **optional** — install only if you want `gudu_lineage` dbt vars exposed to the manifest. Most users skip the dbt package entirely.
 

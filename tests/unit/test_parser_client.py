@@ -1,3 +1,5 @@
+import json
+import subprocess
 from unittest.mock import patch
 
 import pytest
@@ -8,6 +10,7 @@ from gsp_dbt_lineage.parser_client import (
     AuthenticatedBackend,
     BackendConfig,
     BackendUnavailable,
+    LocalJarBackend,
     ParserError,
     RateLimitError,
     call_with_transient_retry,
@@ -140,3 +143,38 @@ def test_transient_retry_does_not_retry_rate_limit():
     with patch("requests.post", return_value=_FakeResponse(429, {})):
         with pytest.raises(RateLimitError):
             call_with_transient_retry(b, "SELECT 1", "dbvbigquery", retries=5, initial_backoff=0.0)
+
+
+def test_local_jar_normalizes_response_to_cloud_shape(tmp_path):
+    """The JAR's DataFlowAnalyzer emits {dbobjs, relationships, processes}
+    directly under `data`; api.gudusoft.com nests the same payload under
+    `data.sqlflow`. The local_jar backend MUST wrap to cloud shape so
+    lineage_mapper.map_gsp_to_node sees the same structure either way.
+    A regression here silently empties lineage for every local_jar user.
+    """
+    fake_jar = tmp_path / "fake.jar"
+    fake_jar.write_bytes(b"x")
+    backend = LocalJarBackend(jar_path=str(fake_jar))
+    payload = {"dbobjs": {"servers": []}, "relationships": [], "processes": []}
+
+    fake_proc = subprocess.CompletedProcess(args=[], returncode=0, stdout=json.dumps(payload), stderr="")
+    with patch("subprocess.run", return_value=fake_proc), patch("shutil.which", return_value="/usr/bin/java"):
+        out = backend.get_lineage("SELECT 1", "dbvbigquery")
+    assert out["code"] == 200
+    assert "sqlflow" in out["data"], "local_jar must wrap dataflow under data.sqlflow"
+    assert out["data"]["sqlflow"] == payload
+
+
+def test_local_jar_passes_through_already_wrapped_response(tmp_path):
+    """If a future JAR build emits the cloud shape natively, don't double-wrap."""
+    fake_jar = tmp_path / "fake.jar"
+    fake_jar.write_bytes(b"x")
+    backend = LocalJarBackend(jar_path=str(fake_jar))
+    payload = {"sqlflow": {"dbobjs": {}, "relationships": []}}
+
+    fake_proc = subprocess.CompletedProcess(args=[], returncode=0, stdout=json.dumps(payload), stderr="")
+    with patch("subprocess.run", return_value=fake_proc), patch("shutil.which", return_value="/usr/bin/java"):
+        out = backend.get_lineage("SELECT 1", "dbvbigquery")
+    # Already cloud-shaped — must not be double-wrapped to data.sqlflow.sqlflow.
+    assert out["data"] == payload
+    assert "sqlflow" not in out["data"]["sqlflow"]

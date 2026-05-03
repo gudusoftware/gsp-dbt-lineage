@@ -1,0 +1,6 @@
+{
+  "detail": "sqlglot 30.6.0 raises ParseError on the nested IF block; preceding CALL and outer IF fall back to Command. Net dbt CLL: 0 tables, 0 column edges.",
+  "id": "E04b",
+  "label": "active",
+  "summary": "Hard parse failure on real user-reported DataHub#11654 SQL — procedural body never reaches lineage extraction"
+}

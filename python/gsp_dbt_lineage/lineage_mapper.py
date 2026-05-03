@@ -28,10 +28,33 @@ Mapping rules:
 from __future__ import annotations
 
 import logging
+import re
 from dataclasses import dataclass
 from typing import Any
 
 logger = logging.getLogger(__name__)
+
+# GSP synthesizes helper columns for procedural / aggregate constructs that
+# are not user-visible projections: `COUNT` (function head), `COUNT(N)` (the
+# aggregate-call result-set column from `IF (SELECT COUNT(1) FROM ...)`-style
+# predicates), and `RELATIONROWS` (a row-count pseudo-column GSP attaches to
+# tables that participate in WHERE / ORDER BY). Dropping these matches the
+# pre-existing filter for T-SQL `@`-prefixed local variables.
+_GSP_SYNTHETIC_COLUMN_NAMES = {"COUNT", "RELATIONROWS"}
+_GSP_SYNTHETIC_COLUMN_RE = re.compile(r"^COUNT\(\d+\)$", re.IGNORECASE)
+
+
+def _is_synthetic_column(name: str) -> bool:
+    if not name:
+        return False
+    if name.startswith("@"):
+        return True
+    upper = name.upper()
+    if upper in _GSP_SYNTHETIC_COLUMN_NAMES:
+        return True
+    if _GSP_SYNTHETIC_COLUMN_RE.match(upper):
+        return True
+    return False
 
 
 @dataclass
@@ -109,6 +132,135 @@ def _classify_relationship(rel_type: str) -> tuple[str, bool]:
     if t == "fdr":
         return "control", False
     return "unknown", True
+
+
+def _extract_procedural_evidence(
+    sqlflow: dict[str, Any],
+    tables: dict[str, _TableRef],
+) -> dict[str, Any] | None:
+    """Build an evidence summary for procedural / multi-statement scripts.
+
+    Procedural BigQuery / T-SQL scripts can write to multiple TEMP TABLE or
+    real-table targets in one shot (the dbt CLL story this package solves).
+    The flat node-level `columns` list collapses same-named columns across
+    those write targets, which is correct for the column_lineage.json schema
+    (one node = one logical projection) but loses the per-target attribution
+    a reviewer needs to trust the result.
+
+    This block records, *in addition* to the flat columns list:
+      - one entry per write-target table (`temp_table`, real CREATE-TABLE-AS,
+        INSERT INTO target);
+      - the source real-table(s) each target was read from;
+      - the column edges traced into that target;
+      - process / branch counts.
+
+    Returns ``None`` if the response shows no procedural / multi-statement
+    structure (single-CTAS, single-CTE, etc.).
+    """
+    relationships = sqlflow.get("relationships") or []
+    processes = sqlflow.get("processes") or []
+
+    # Build target-table -> {target_col: [source_table.column, ...]}
+    # by walking only fdd relationships whose target is a real (or temp) table.
+    edges_by_target_table: dict[str, dict[str, list[dict[str, str]]]] = {}
+    table_id_to_subtype: dict[str, str | None] = {}
+    for rel in relationships:
+        if (rel.get("type") or "").lower() != "fdd":
+            continue
+        target = rel.get("target") or {}
+        target_parent_id = str(target.get("parentId", ""))
+        target_parent = tables.get(target_parent_id)
+        target_col = target.get("column") or ""
+        if not target_parent or not target_col or not target_parent.is_real:
+            continue
+        if _is_synthetic_column(target_col):
+            continue
+        if target_col == "*":
+            continue
+        # Walk through the source(s); when source is a result-set, recurse one
+        # hop via the result-set's own incoming fdd rels to find a real source.
+        resolved_sources: list[dict[str, str]] = []
+        for src in rel.get("sources") or []:
+            src_parent_id = str(src.get("parentId", ""))
+            src_parent = tables.get(src_parent_id)
+            src_col = src.get("column") or ""
+            if not src_parent or not src_col:
+                continue
+            if src_parent.is_real:
+                resolved_sources.append({"table": src_parent.fqn, "column": src_col})
+                continue
+            # source is a result-set — find the inbound fdd relationship(s) for
+            # (src_parent_id, src_col) and follow them one step.
+            for upstream_rel in relationships:
+                if (upstream_rel.get("type") or "").lower() != "fdd":
+                    continue
+                ut = upstream_rel.get("target") or {}
+                if str(ut.get("parentId", "")) != src_parent_id:
+                    continue
+                if (ut.get("column") or "") != src_col:
+                    continue
+                for usrc in upstream_rel.get("sources") or []:
+                    usrc_parent = tables.get(str(usrc.get("parentId", "")))
+                    usrc_col = usrc.get("column") or ""
+                    if usrc_parent and usrc_parent.is_real and usrc_col:
+                        resolved_sources.append(
+                            {"table": usrc_parent.fqn, "column": usrc_col}
+                        )
+        if not resolved_sources:
+            continue
+        per_table = edges_by_target_table.setdefault(target_parent.fqn, {})
+        per_col = per_table.setdefault(target_col, [])
+        for s in resolved_sources:
+            if s not in per_col:
+                per_col.append(s)
+        # Track the GSP subType ("temp_table" vs None for real tables) per
+        # target so the evidence block can flag temp vs persisted targets.
+        for srv in (sqlflow.get("dbobjs") or {}).get("servers") or []:
+            for db in srv.get("databases") or []:
+                for sch in db.get("schemas") or []:
+                    for t in sch.get("tables") or []:
+                        if str(t.get("id")) == target_parent_id:
+                            table_id_to_subtype[target_parent.fqn] = t.get("subType")
+
+    if not edges_by_target_table:
+        return None
+    if len(edges_by_target_table) < 2 and len(processes) < 2:
+        # Single write target and single statement — not procedural enough to
+        # warrant a separate evidence block; the flat columns list already
+        # captures everything.
+        return None
+
+    write_targets: list[dict[str, Any]] = []
+    column_edge_count = 0
+    for tgt_table in sorted(edges_by_target_table):
+        per_col = edges_by_target_table[tgt_table]
+        target_columns = sorted(per_col.keys())
+        from_tables = sorted({s["table"] for col in per_col.values() for s in col})
+        edges = [
+            {"target_column": tc, "from": s}
+            for tc in target_columns
+            for s in sorted(per_col[tc], key=lambda x: (x["table"], x["column"]))
+        ]
+        column_edge_count += len(edges)
+        wt: dict[str, Any] = {
+            "table": tgt_table,
+            "from": from_tables,
+            "columns": target_columns,
+            "edges": edges,
+        }
+        sub = table_id_to_subtype.get(tgt_table)
+        if sub:
+            wt["subType"] = sub
+        write_targets.append(wt)
+
+    return {
+        "procedural": {
+            "write_targets": write_targets,
+            "write_target_count": len(write_targets),
+            "column_edge_count": column_edge_count,
+            "process_count": len(processes),
+        }
+    }
 
 
 def map_gsp_to_node(
@@ -219,11 +371,13 @@ def map_gsp_to_node(
         existing["upstream"] = sorted(merged, key=lambda e: (e["table"], e["column"]))
     columns = sorted(by_name.values(), key=lambda c: c["name"])
 
-    # Drop T-SQL @-prefixed local-variable pseudo-columns and BigQuery `@`
-    # query parameters — these are not real output columns. GSP surfaces them
-    # because `SELECT @x` parses as a column projection, but they don't
-    # belong in column lineage.
-    columns = [c for c in columns if not c["name"].startswith("@")]
+    # Drop GSP-synthetic columns that are not real output projections:
+    #   - T-SQL `@`-prefixed local variables / BigQuery `@` query parameters
+    #   - Aggregate-helper rows (`COUNT`, `COUNT(1)`) that GSP emits when an IF
+    #     predicate contains `(SELECT COUNT(N) FROM ...)`
+    #   - `RELATIONROWS` row-count pseudo-columns attached to tables in
+    #     WHERE / ORDER BY clauses
+    columns = [c for c in columns if not _is_synthetic_column(c["name"])]
 
     # 4. Status / overall confidence.
     if not columns and not upstream_tables:
@@ -236,7 +390,7 @@ def map_gsp_to_node(
         status = "partial"
         node_confidence = "low"
 
-    return {
+    node: dict[str, Any] = {
         "node_id": node_id,
         "status": status,
         "confidence": node_confidence,
@@ -247,3 +401,7 @@ def map_gsp_to_node(
         "unresolved": unresolved,
         "warnings": [],
     }
+    evidence = _extract_procedural_evidence(sqlflow, tables)
+    if evidence:
+        node["evidence"] = evidence
+    return node

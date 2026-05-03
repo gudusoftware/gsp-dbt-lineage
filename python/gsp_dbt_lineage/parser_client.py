@@ -306,6 +306,12 @@ class LocalJarBackend(Backend):
                 f"{self.label}: stdout is not JSON: {e}. "
                 f"First 200 chars: {proc.stdout[:200]!r}"
             ) from e
+        # The JAR's DataFlowAnalyzer emits {dbobjs, relationships, processes}
+        # directly, while api.gudusoft.com wraps the same payload under
+        # data.sqlflow. Normalize to the cloud shape so map_gsp_to_node sees
+        # the same structure regardless of backend.
+        if isinstance(dataflow, dict) and "sqlflow" not in dataflow:
+            dataflow = {"sqlflow": dataflow}
         return {"code": 200, "data": dataflow}
 
 

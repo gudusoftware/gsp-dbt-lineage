@@ -11,7 +11,7 @@ dbt's stock column-level lineage is sqlglot-based, and on a narrow set of dbt-re
 | Where sqlglot returns 0 column edges | What `gudusoftware/gsp-dbt-lineage` does |
 |---|---|
 | BigQuery `dbt-utils.deduplicate` macro | Resolves `all_articles → deduplicated_articles` with 3 column edges (see [`docs/examples/column_lineage.json`](docs/examples/column_lineage.json)) |
-| BigQuery procedural SQL (DECLARE/IF/EXCEPTION/temp tables) | Traces `src → temp → tgt` |
+| BigQuery procedural SQL (DECLARE STRUCT, CALL, nested IF, CREATE TEMP TABLE) | Recovers 2 write targets and 11 column edges on the real user-reported [datahub#11654](https://github.com/datahub-project/datahub/issues/11654) script — see [`fixtures/evidence/E04b_bigquery_procedural_real_datahub_11654/`](fixtures/evidence/E04b_bigquery_procedural_real_datahub_11654/). sqlglot 30.6.0 raises `ParseError` on the same SQL. |
 | MSSQL/T-SQL stored procedure body lineage | Traces `BEGIN ... INSERT ... SELECT ... END` end-to-end |
 | T-SQL Cursor + IF/BEGIN/END control flow | Resolves all branches |
 
@@ -41,12 +41,12 @@ The package replaces dbt's CLL only where sqlglot returns nothing; sqlglot outpu
 
 | Phase | Target | Notes |
 |---|---|---|
-| **A — Status calibration (current)** | Docs ↔ code parity, runnable example, evidence-gated marketing | This README + `docs/examples/`. |
-| B — Wedge alpha | BigQuery `dbt-utils.deduplicate`, BigQuery procedural, MSSQL stored procs end-to-end with `evidence` / `unresolved` / `confidence` populated | v0.1.x |
-| C — CI/CD beta | Column-level diff, `--state` / slim CI, sticky PR comment, Docker GitHub Action | v0.2.x |
+| **A — Status calibration** | Docs ↔ code parity, runnable example, evidence-gated marketing | Complete in repo baseline `81acd8d`. |
+| **B — Wedge alpha (current focus)** | BigQuery `dbt-utils.deduplicate`, BigQuery procedural, MSSQL stored procs end-to-end with richer `evidence` / `unresolved` / `confidence` populated | v0.1.x |
+| C — CI/CD beta | Per-column semantic diff, `--state` / slim CI, sticky PR comment, Docker GitHub Action | v0.2.x |
 | D — Distribution + enterprise POC | PyPI release, canonical lineage model, filter / join / control influence separation, PII tag propagation | v1.0 |
 
-See `docs/dbt-lineage/implementation-plan.md` in the companion ops repo for full per-phase tasks.
+See [`docs/next-phase-focus.md`](docs/next-phase-focus.md) for the current repo-level focus and `docs/dbt-lineage/implementation-plan.md` in the companion ops repo for the full historical runbook.
 
 ## Architecture (locked, see ADR-007)
 

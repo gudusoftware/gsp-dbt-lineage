@@ -21,6 +21,7 @@ from gsp_dbt_lineage.lineage_schema import validate_lineage
 ACTIVE_FIXTURES = [
     "E03_dbt_utils_deduplicate_macro_on_bigquery",
     "E04_bigquery_procedural_declare_if_exception_temp_tables",
+    "E04b_bigquery_procedural_real_datahub_11654",
     "E10_bigquery_multi_statement_begin_end_procedural_discovery",
     "E16_t_sql_stored_proc_with_begin_end_temp_table_chain",
     "E17_t_sql_create_procedure_wrapper_with_insert_select",

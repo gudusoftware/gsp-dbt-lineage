@@ -1,0 +1,21 @@
+id: E04b
+label: active
+dialect: bigquery
+dbvendor: dbvbigquery
+description: |
+  Real user-reported BigQuery procedural SQL from datahub-project/datahub#11654
+  (DECLARE STRUCT<...ARRAY<DATE>>, CALL with tuple args, nested IF blocks,
+  CREATE OR REPLACE TEMP TABLE, SELECT * EXCEPT, WHERE (a,b,c,d) IN UNNEST(...)).
+  sqlglot 30.6.0 raises ParseError; GSP/SQLFlow recovers 2 write targets and
+  11 column edges. This is the headline BigQuery procedural fixture for the
+  v0.1.x launch claim.
+sqlglot_phase01_result: PARSE_ERROR
+expected_upstream_tables:
+- project.dataset.view_name
+- temp_table_delta
+expected_downstream_tables:
+- temp_table
+- final_output
+expected_write_target_count: 2
+expected_column_edge_count: 11
+source_evidence_index: materials/dbt-lineage-evidence/index.yml
