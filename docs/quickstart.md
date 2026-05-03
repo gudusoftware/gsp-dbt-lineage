@@ -16,7 +16,7 @@ The dbt-side package (`gudusoftware/gsp_dbt_lineage`) is **optional** — instal
 # packages.yml — only if you want dbt-side config exposure
 packages:
   - package: gudusoftware/gsp_dbt_lineage
-    version: 0.0.1
+    version: 0.1.0
 ```
 
 ```bash

@@ -19,7 +19,7 @@ jobs:
         run: |
           pip install dbt-bigquery
           dbt build
-      - uses: gudusoftware/gsp-dbt-lineage@v0.0.1
+      - uses: gudusoftware/gsp-dbt-lineage@v0.1.0-alpha
         with:
           backend: authenticated
           user-id: ${{ secrets.GSP_USER_ID }}

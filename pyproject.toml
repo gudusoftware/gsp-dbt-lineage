@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "gsp-dbt-lineage"
-version = "0.0.1"
+version = "0.1.0a0"
 description = "Reliable column-level lineage for dbt projects, via Gudu SQLFlow. Fixes dbt CLL where sqlglot silently fails (BigQuery procedural SQL, dbt-utils deduplicate, MSSQL stored procedures)."
 readme = "README.md"
 license = "Apache-2.0"
@@ -14,7 +14,7 @@ authors = [
 ]
 keywords = ["dbt", "lineage", "column-level-lineage", "datahub", "openmetadata", "bigquery", "mssql", "sql-parser", "sqlflow"]
 classifiers = [
-    "Development Status :: 2 - Pre-Alpha",
+    "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.9",

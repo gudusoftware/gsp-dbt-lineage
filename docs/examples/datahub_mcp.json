@@ -1,0 +1,63 @@
+[
+  {
+    "aspect": {
+      "json": {
+        "fineGrainedLineages": [
+          {
+            "downstreamType": "FIELD",
+            "downstreams": [
+              "urn:li:schemaField:(urn:li:dataset:(urn:li:dataPlatform:bigquery,model.gsp_dbt_lineage_demo.deduplicated_articles,PROD),*)"
+            ],
+            "transformOperation": "direct",
+            "upstreamType": "FIELD_SET",
+            "upstreams": [
+              "urn:li:schemaField:(urn:li:dataset:(urn:li:dataPlatform:bigquery,all_articles,PROD),*)"
+            ]
+          },
+          {
+            "downstreamType": "FIELD",
+            "downstreams": [
+              "urn:li:schemaField:(urn:li:dataset:(urn:li:dataPlatform:bigquery,model.gsp_dbt_lineage_demo.deduplicated_articles,PROD),*)"
+            ],
+            "transformOperation": "direct",
+            "upstreamType": "FIELD_SET",
+            "upstreams": [
+              "urn:li:schemaField:(urn:li:dataset:(urn:li:dataPlatform:bigquery,all_articles,PROD),ARTICLE_NAME)"
+            ]
+          },
+          {
+            "downstreamType": "FIELD",
+            "downstreams": [
+              "urn:li:schemaField:(urn:li:dataset:(urn:li:dataPlatform:bigquery,model.gsp_dbt_lineage_demo.deduplicated_articles,PROD),*)"
+            ],
+            "transformOperation": "direct",
+            "upstreamType": "FIELD_SET",
+            "upstreams": [
+              "urn:li:schemaField:(urn:li:dataset:(urn:li:dataPlatform:bigquery,all_articles,PROD),ID)"
+            ]
+          }
+        ],
+        "upstreams": [
+          {
+            "auditStamp": {
+              "actor": "urn:li:corpuser:gsp-dbt-lineage",
+              "time": 0
+            },
+            "dataset": "urn:li:dataset:(urn:li:dataPlatform:bigquery,all_articles,PROD)",
+            "type": "TRANSFORMED"
+          }
+        ]
+      }
+    },
+    "aspectName": "upstreamLineage",
+    "changeType": "UPSERT",
+    "entityType": "dataset",
+    "entityUrn": "urn:li:dataset:(urn:li:dataPlatform:bigquery,model.gsp_dbt_lineage_demo.deduplicated_articles,PROD)",
+    "systemMetadata": {
+      "lastObserved": 0,
+      "registryName": "gsp-dbt-lineage",
+      "registryVersion": "gsp-dbt-lineage 0.1.0a0",
+      "runId": "gsp-dbt-lineage"
+    }
+  }
+]

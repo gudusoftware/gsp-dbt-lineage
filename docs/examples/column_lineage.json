@@ -1,0 +1,62 @@
+{
+  "backend": {
+    "cli_version": "0.1.0a0",
+    "mode": "anonymous",
+    "parser_version": "unknown"
+  },
+  "generator": "gsp-dbt-lineage 0.1.0a0",
+  "manifest_metadata": {
+    "adapter_type": "bigquery",
+    "dbt_schema_version": "https://schemas.getdbt.com/dbt/manifest/v11.json",
+    "dbt_version": "1.7.4",
+    "eligible_count": 1,
+    "project_name": "gsp_dbt_lineage_demo",
+    "selected_count": 1
+  },
+  "nodes": [
+    {
+      "columns": [
+        {
+          "confidence": "low",
+          "name": "*",
+          "transform": "direct",
+          "upstream": [
+            {
+              "column": "*",
+              "table": "all_articles"
+            },
+            {
+              "column": "ARTICLE_NAME",
+              "table": "all_articles"
+            },
+            {
+              "column": "ID",
+              "table": "all_articles"
+            }
+          ]
+        }
+      ],
+      "confidence": "high",
+      "dialect": "dbvbigquery",
+      "downstream": [],
+      "node_id": "model.gsp_dbt_lineage_demo.deduplicated_articles",
+      "status": "parsed",
+      "unresolved": [],
+      "upstream_tables": [
+        "all_articles"
+      ],
+      "warnings": []
+    }
+  ],
+  "schema_version": "0.2.x",
+  "stats": {
+    "coverage": 1.0,
+    "failed": 0,
+    "parsed": 1,
+    "partial": 0,
+    "resolved_columns": 1,
+    "skipped": 0,
+    "total_columns": 1,
+    "unsupported": 0
+  }
+}

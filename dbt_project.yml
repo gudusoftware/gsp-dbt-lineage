@@ -3,7 +3,7 @@
 # Runtime — HTTP backend dispatch, cache, lineage emission — lives in the
 # companion Python CLI `gsp-dbt-lineage` (installed via pip). See ADR-007.
 name: 'gudusoftware_gsp_dbt_lineage'
-version: '0.0.1'
+version: '0.1.0'
 config-version: 2
 
 require-dbt-version: [">=1.5.0", "<2.0.0"]

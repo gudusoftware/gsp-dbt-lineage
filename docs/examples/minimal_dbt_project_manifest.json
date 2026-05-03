@@ -1,0 +1,32 @@
+{
+  "metadata": {
+    "dbt_schema_version": "https://schemas.getdbt.com/dbt/manifest/v11.json",
+    "dbt_version": "1.7.4",
+    "generated_at": "2026-05-03T00:00:00Z",
+    "project_name": "gsp_dbt_lineage_demo",
+    "adapter_type": "bigquery"
+  },
+  "nodes": {
+    "model.gsp_dbt_lineage_demo.deduplicated_articles": {
+      "name": "deduplicated_articles",
+      "resource_type": "model",
+      "fqn": ["gsp_dbt_lineage_demo", "analytics", "deduplicated_articles"],
+      "package_name": "gsp_dbt_lineage_demo",
+      "path": "analytics/deduplicated_articles.sql",
+      "original_file_path": "models/analytics/deduplicated_articles.sql",
+      "compiled_path": "compiled/gsp_dbt_lineage_demo/models/analytics/deduplicated_articles.sql",
+      "compiled_code": "SELECT u.*\nFROM (\n    SELECT ARRAY_AGG(original ORDER BY article_name DESC LIMIT 1)[OFFSET(0)] AS u\n    FROM all_articles AS original\n    GROUP BY id\n)\n",
+      "language": "sql",
+      "tags": ["analytics"]
+    }
+  },
+  "sources": {},
+  "exposures": {},
+  "macros": {},
+  "child_map": {
+    "model.gsp_dbt_lineage_demo.deduplicated_articles": []
+  },
+  "parent_map": {
+    "model.gsp_dbt_lineage_demo.deduplicated_articles": []
+  }
+}

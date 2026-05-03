@@ -5,7 +5,7 @@
 {% macro gudu_lineage_metadata() %}
   {% do return({
       "package": "gudusoftware/gsp_dbt_lineage",
-      "version": "0.0.1",
+      "version": "0.1.0",
       "schema_version": "0.2.x",
       "config": var("gudu_lineage", {})
   }) %}

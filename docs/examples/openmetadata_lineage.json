@@ -1,0 +1,26 @@
+[
+  {
+    "edge": {
+      "fromEntity": {
+        "fullyQualifiedName": "bigquery.all_articles",
+        "type": "table"
+      },
+      "lineageDetails": {
+        "columnsLineage": [
+          {
+            "fromColumns": [
+              "bigquery.all_articles.*",
+              "bigquery.all_articles.ARTICLE_NAME",
+              "bigquery.all_articles.ID"
+            ],
+            "toColumn": "bigquery.model.gsp_dbt_lineage_demo.deduplicated_articles.*"
+          }
+        ]
+      },
+      "toEntity": {
+        "fullyQualifiedName": "bigquery.model.gsp_dbt_lineage_demo.deduplicated_articles",
+        "type": "table"
+      }
+    }
+  }
+]
