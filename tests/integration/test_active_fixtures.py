@@ -24,6 +24,7 @@ ACTIVE_FIXTURES = [
     "E04b_bigquery_procedural_real_datahub_11654",
     "E10_bigquery_multi_statement_begin_end_procedural_discovery",
     "E16_t_sql_stored_proc_with_begin_end_temp_table_chain",
+    "E16b_mssql_stored_proc_real_openmetadata_25299",
     "E17_t_sql_create_procedure_wrapper_with_insert_select",
     "E18_t_sql_stored_proc_same_construct_as_e17",
     "E19_t_sql_case_in_select_datahub_split_statements_regression",

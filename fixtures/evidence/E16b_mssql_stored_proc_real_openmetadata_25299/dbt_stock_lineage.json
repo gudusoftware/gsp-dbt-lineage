@@ -1,0 +1,23 @@
+{
+  "generator": "dbt-stock-cll-baseline (sqlglot-30.6.0 + sqlfluff + sqlparse on real OpenMetadata#25299 SQL)",
+  "nodes": [
+    {
+      "columns": [],
+      "confidence": "low",
+      "dialect": "dbvmssql",
+      "downstream": [],
+      "node_id": "fixture.E16b",
+      "status": "unsupported",
+      "unresolved": [
+        {
+          "reason": "sqlglot_baseline",
+          "phase01_result": "PARSES_TO_CREATE_BODY_LINEAGE_UNVERIFIED",
+          "detail": "OpenMetadata's CLL chain (sqlglot → sqlfluff → sqlparse) returns 0 column edges on the verbatim user-reported SQL. The CREATE PROCEDURE ... AS BEGIN ... END wrapper defeats the parser chain before it reaches the inner DML, even though INSERT INTO #tempTable / INSERT INTO schName.targetTable would parse fine standalone. This is the exact symptom reporters describe in OpenMetadata#25299."
+        }
+      ],
+      "upstream_tables": [],
+      "warnings": []
+    }
+  ],
+  "schema_version": "0.2.x"
+}

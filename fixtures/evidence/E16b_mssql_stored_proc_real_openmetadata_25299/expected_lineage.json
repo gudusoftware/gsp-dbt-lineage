@@ -1,0 +1,105 @@
+{
+  "backend": {
+    "cli_version": "0.0.1",
+    "mode": "fixture",
+    "parser_version": "local-jar-4.1.0.15"
+  },
+  "generator": "build_fixtures.py",
+  "manifest_metadata": {
+    "adapter_type": "tsql",
+    "dbt_version": "fixture",
+    "eligible_count": 1,
+    "project_name": "fixture",
+    "selected_count": 1
+  },
+  "nodes": [
+    {
+      "columns": [
+        {
+          "confidence": "high",
+          "name": "COLUMNNAME",
+          "transform": "direct",
+          "upstream": [
+            {
+              "column": "COLUMNNAME",
+              "table": "dbName.dbo.#tempTable"
+            },
+            {
+              "column": "COLUMNNAME",
+              "table": "dbName.schName.sourceTable"
+            }
+          ]
+        }
+      ],
+      "confidence": "high",
+      "dialect": "dbvmssql",
+      "downstream": [],
+      "evidence": {
+        "procedural": {
+          "column_edge_count": 2,
+          "process_count": 3,
+          "write_target_count": 2,
+          "write_targets": [
+            {
+              "columns": [
+                "COLUMNNAME"
+              ],
+              "edges": [
+                {
+                  "from": {
+                    "column": "COLUMNNAME",
+                    "table": "dbName.schName.sourceTable"
+                  },
+                  "target_column": "COLUMNNAME"
+                }
+              ],
+              "from": [
+                "dbName.schName.sourceTable"
+              ],
+              "subType": "temp_table",
+              "table": "dbName.dbo.#tempTable"
+            },
+            {
+              "columns": [
+                "COLUMNNAME"
+              ],
+              "edges": [
+                {
+                  "from": {
+                    "column": "COLUMNNAME",
+                    "table": "dbName.dbo.#tempTable"
+                  },
+                  "target_column": "COLUMNNAME"
+                }
+              ],
+              "from": [
+                "dbName.dbo.#tempTable"
+              ],
+              "table": "dbName.schName.targetTable"
+            }
+          ]
+        }
+      },
+      "node_id": "fixture.E16b",
+      "status": "parsed",
+      "unresolved": [],
+      "upstream_tables": [
+        "dbName.dbo.#tempTable",
+        "dbName.schName.sourceTable",
+        "dbName.schName.targetTable"
+      ],
+      "warnings": []
+    }
+  ],
+  "schema_version": "0.2.x",
+  "stats": {
+    "coverage": 1.0,
+    "failed": 0,
+    "parsed": 1,
+    "partial": 0,
+    "resolved_columns": 1,
+    "skipped": 0,
+    "total_columns": 1,
+    "unsupported": 0
+  }
+}

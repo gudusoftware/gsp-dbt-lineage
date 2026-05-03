@@ -59,6 +59,48 @@ Goal: make the alpha credible on the exact wedges it claims.
 4. Preserve the E06 limitation: BigQuery UDF return STRUCT `func(args).*` is not a launch claim until GSP grammar supports it.
 5. Add richer `evidence` and `unresolved` output for partial / failed nodes so users can understand exactly what was trusted and what was not.
 
+#### P0 status — MSSQL stored procedures (2026-05-03)
+
+- **Headline fixture promoted from toy SQL to real user-reported SQL.** New
+  fixture `E16b_mssql_stored_proc_real_openmetadata_25299` carries the
+  verbatim SQL from
+  [open-metadata/OpenMetadata#25299](https://github.com/open-metadata/OpenMetadata/issues/25299)
+  (`CREATE PROCEDURE schName.procName AS BEGIN ... END` with a 3-hop
+  temp-table chain `schName.sourceTable → #tempTable → schName.targetTable`,
+  plus the full `CREATE database / schema / table` setup the reporter pasted
+  and the 13 trailing `EXECUTE schName.procName` calls). All six
+  integration-gauntlet checks pass; mapper round-trip stable; deterministic
+  render verified. Reporter confirms the OpenMetadata CLL chain
+  (`sqlglot → sqlfluff → sqlparse`) returns zero column edges across
+  versions 1.10.0, 1.10.4, and 1.11.2 — a cleaner differential than the
+  toy E16/E17/E18 trio, which only minimally repro the same wrapper.
+- **Mapper emits `evidence.procedural` unchanged on MSSQL.** The
+  procedural-evidence emitter that landed for E04b is dialect-agnostic; on
+  E16b it records 2 write targets (`#tempTable ← sourceTable`,
+  `targetTable ← #tempTable`), 2 column edges (`columnName → columnName` on
+  each hop), 3 processes (the two procedure-body INSERTs plus the outer
+  batch-query INSERT), and preserves GSP's `subType: temp_table` marker on
+  `#tempTable`. No mapper code change was needed for the MSSQL wedge.
+- **Stock dbt CLL on the verbatim SQL: 0 edges.** PR #14586 removed the
+  `LIKE '%create%procedure%'` ingestion filter, so the procedure text now
+  reaches the parser chain — but each parser bails on the
+  `CREATE PROCEDURE … BEGIN … END` wrapper before reaching the inner
+  `INSERT` statements. This matches the symptom reporters describe in
+  #25299 (and in the related #16737 / #17586) after the filter fix.
+- **Cached response: local JAR.** Captured via
+  `gsqlparser-4.1.0.15-shaded.jar` and stored at
+  `materials/dbt-lineage-evidence/poc-responses/E16b_response.json` in the
+  `{http_status, body: {code, data: {sqlflow}}}` cloud shape so
+  `LocalJarBackend` and `AnonymousBackend`/`AuthenticatedBackend` paths
+  share the same cached fixture surface.
+- **Evidence-index updated.** `materials/dbt-lineage-evidence/index.yml`
+  carries E16b alongside E04b as the launch-claim-eligible MSSQL row.
+- **Open question for the cloud-side bug log.** Cloud
+  `exportFullLineageAsJson` was not retried for the verbatim
+  multi-statement-with-`go`-batch-separator SQL on this round; the local
+  JAR path is sufficient for the cached PoC pipeline. Add to the watch list
+  if anonymous/authenticated mode regresses on T-SQL batch separators.
+
 #### P0 status — BigQuery procedural (2026-05-03)
 
 - **Headline fixture promoted from toy SQL to real user-reported SQL.** New

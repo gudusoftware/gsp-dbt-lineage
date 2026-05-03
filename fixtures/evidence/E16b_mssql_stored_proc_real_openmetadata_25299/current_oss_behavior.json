@@ -1,0 +1,6 @@
+{
+  "id": "E16b",
+  "label": "active",
+  "summary": "OpenMetadata's collate-sqllineage chain (sqlglot → sqlfluff → sqlparse) returns 0 column edges on the verbatim CREATE PROCEDURE / BEGIN..END / temp-table 3-hop SQL from OpenMetadata#25299; reporter confirms zero lineage in UI across versions 1.10.0, 1.10.4, 1.11.2.",
+  "detail": "The PR #14586 fix removed the `LIKE '%create%procedure%'` ingestion filter, so the procedure text now reaches the parser chain. But each parser in the chain bails on the procedural wrapper before reaching the inner INSERT statements, so lineage stays empty in the UI — matching @antonsyagailo-obs's report and @RickLeite's confirmation."
+}

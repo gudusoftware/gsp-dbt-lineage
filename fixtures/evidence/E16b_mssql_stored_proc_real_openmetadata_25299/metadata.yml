@@ -1,0 +1,24 @@
+id: E16b
+label: active
+dialect: tsql
+dbvendor: dbvmssql
+description: |
+  Real user-reported MSSQL stored procedure SQL from open-metadata/OpenMetadata#25299
+  (CREATE PROCEDURE schName.procName AS BEGIN ... END with a 3-hop temp-table chain:
+  schName.sourceTable -> #tempTable -> schName.targetTable, plus 13 EXECUTE calls and
+  the full CREATE database/schema/table setup the reporter pasted verbatim). The
+  OpenMetadata CLL chain (sqlglot -> sqlfluff -> sqlparse) returns 0 column edges;
+  GSP/SQLFlow (local JAR 4.1.0.15) recovers 2 write targets and 2 column edges
+  through the temp-table hop. This is the headline MSSQL stored-procedure fixture
+  for the v0.1.x launch claim.
+sqlglot_phase01_result: PARSES_TO_CREATE_BODY_LINEAGE_UNVERIFIED
+expected_upstream_tables:
+- dbName.schName.sourceTable
+- dbName.dbo.#tempTable
+- dbName.schName.targetTable
+expected_downstream_tables:
+- dbName.dbo.#tempTable
+- dbName.schName.targetTable
+expected_write_target_count: 2
+expected_column_edge_count: 2
+source_evidence_index: materials/dbt-lineage-evidence/index.yml
