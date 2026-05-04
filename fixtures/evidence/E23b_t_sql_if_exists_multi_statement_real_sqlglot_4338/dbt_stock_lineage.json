@@ -1,0 +1,23 @@
+{
+  "generator": "dbt-stock-cll-baseline (sqlglot-30.6.0 + collate-sqllineage 2.1.1 on real sqlglot#4338 SQL)",
+  "nodes": [
+    {
+      "columns": [],
+      "confidence": "low",
+      "dialect": "dbvmssql",
+      "downstream": [],
+      "node_id": "fixture.E23b",
+      "status": "unsupported",
+      "unresolved": [
+        {
+          "reason": "sqlglot_baseline",
+          "phase01_result": "PARSES_TO_IFBLOCK_DROPS_REMAINING_BATCH",
+          "detail": "sqlglot 30.6.0 returns the multi-statement batch as a single IfBlock and the CREATE VIEW with its 9-column projection never appears in the AST. The OpenMetadata collate-sqllineage chain (sqlglot → sqlfluff → sqlparse) raises UnsupportedStatementException on the IF EXISTS / DROP VIEW / GO header before reaching the CREATE VIEW. Net effect: 0 column edges, 0 upstream tables, even though db.YEARLY_TARGETS_FriendlyNames and db.YEARLY_TARGETS_DIVISION_FriendlyNames are visibly the real sources of [DBAPP].[WFA_YEARLY_TARGETS_ModelView]."
+        }
+      ],
+      "upstream_tables": [],
+      "warnings": []
+    }
+  ],
+  "schema_version": "0.2.x"
+}

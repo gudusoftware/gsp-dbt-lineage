@@ -84,11 +84,11 @@ def _walk_dbobjs(dbobjs: dict[str, Any]) -> dict[str, _TableRef]:
                 schema_name = schema.get("name") or ""
                 if schema_name in _GSP_DEFAULT_NAMES:
                     schema_name = ""
-                for collection_key in ("tables", "others"):
+                for collection_key in ("tables", "views", "others"):
                     for tbl in schema.get(collection_key) or []:
                         tid = str(tbl.get("id"))
                         name = tbl.get("name") or tbl.get("displayName") or ""
-                        is_real = collection_key == "tables" and bool(name) and not name.startswith("RS-")
+                        is_real = collection_key in ("tables", "views") and bool(name) and not name.startswith("RS-")
                         fqn = ".".join(p for p in (server_name, db_name, schema_name, name) if p)
                         cols_by_id: dict[str, str] = {}
                         cols_by_name: dict[str, str] = {}
@@ -218,9 +218,10 @@ def _extract_procedural_evidence(
         for srv in (sqlflow.get("dbobjs") or {}).get("servers") or []:
             for db in srv.get("databases") or []:
                 for sch in db.get("schemas") or []:
-                    for t in sch.get("tables") or []:
-                        if str(t.get("id")) == target_parent_id:
-                            table_id_to_subtype[target_parent.fqn] = t.get("subType")
+                    for collection_key in ("tables", "views"):
+                        for t in sch.get(collection_key) or []:
+                            if str(t.get("id")) == target_parent_id:
+                                table_id_to_subtype[target_parent.fqn] = t.get("subType")
 
     if not edges_by_target_table:
         return None

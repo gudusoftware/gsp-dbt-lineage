@@ -1,0 +1,25 @@
+{
+  "generator": "dbt-stock-cll-baseline (sqlglot-30.6.0 + collate-sqllineage 2.1.1 on real datahub#11670 SQL)",
+  "nodes": [
+    {
+      "columns": [],
+      "confidence": "low",
+      "dialect": "dbvbigquery",
+      "downstream": [],
+      "node_id": "fixture.E03b",
+      "status": "partial",
+      "unresolved": [
+        {
+          "reason": "sqlglot_baseline",
+          "phase01_result": "PARSES_BUT_LINEAGE_DROPS_STAR_OVER_ARRAY_AGG_STRUCT",
+          "detail": "Table-level lineage works (source_tables=['all_articles']) but column-level lineage is empty because the STAR over ARRAY_AGG(struct ORDER BY ... LIMIT 1)[OFFSET(0)] is not expanded by qualify_columns. sqlglot.lineage() raises 'Cannot find column \\'article_name\\' in query.'. This matches the visual diff @Starkie attached to datahub#11670: table-level edges present, column-level panel empty."
+        }
+      ],
+      "upstream_tables": [
+        "all_articles"
+      ],
+      "warnings": []
+    }
+  ],
+  "schema_version": "0.2.x"
+}

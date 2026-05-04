@@ -20,6 +20,7 @@ from gsp_dbt_lineage.lineage_schema import validate_lineage
 
 ACTIVE_FIXTURES = [
     "E03_dbt_utils_deduplicate_macro_on_bigquery",
+    "E03b_bigquery_dbt_utils_deduplicate_real_datahub_11670",
     "E04_bigquery_procedural_declare_if_exception_temp_tables",
     "E04b_bigquery_procedural_real_datahub_11654",
     "E10_bigquery_multi_statement_begin_end_procedural_discovery",
@@ -31,6 +32,7 @@ ACTIVE_FIXTURES = [
     "E20_t_sql_declare_while_set_inside_create_procedure",
     "E22_t_sql_cursor_fetch_status",
     "E23_t_sql_if_begin_end_with_conditional_inserts",
+    "E23b_t_sql_if_exists_multi_statement_real_sqlglot_4338",
 ]
 
 # E20 is a structural-only test — declare/while/set inside a stored procedure

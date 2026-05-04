@@ -1,0 +1,30 @@
+id: E23b
+label: active
+dialect: tsql
+dbvendor: dbvmssql
+description: |
+  Real user-reported T-SQL multi-statement batch from sqlglot#4338
+  (@Palkers76, "Error Converting from TSQL with IF in 1st line"): a verbatim
+  Synapse-style deployment script that opens with `IF EXISTS (SELECT * FROM
+  sys.views WHERE object_id = OBJECT_ID(N'[DBAPP].[YEARLY_TARGETS_ModelView]'))
+  DROP VIEW [DBAPP].[YEARLY_TARGETS_ModelView]`, three `GO` batch separators,
+  two `SET` directives, then a `CREATE VIEW` with a 9-column projection
+  (CASE WHEN over `db.YEARLY_TARGETS_FriendlyNames T` LEFT JOIN
+  `db.YEARLY_TARGETS_DIVISION_FriendlyNames D`). sqlglot 30.6.0 parses the
+  batch into a single `IfBlock` statement and silently drops the rest of the
+  script — `lineage()` raises `Cannot build lineage, sql must be SELECT`.
+  collate-sqllineage 2.1.1 (OpenMetadata's CLL chain) raises
+  `UnsupportedStatementException` on the IF EXISTS line and emits 0 column
+  edges. GSP/SQLFlow (local JAR 4.1.0.15) parses the IF/GO/SET wrapper, walks
+  into the CREATE VIEW body, and recovers 6 column edges to the view's 9
+  output columns plus the 3 real upstream tables. Headline fixture for the
+  v0.1.x T-SQL cursor / IF / BEGIN / END launch claim.
+sqlglot_phase01_result: PARSES_TO_IFBLOCK_DROPS_REMAINING_BATCH
+expected_upstream_tables:
+- db.YEARLY_TARGETS_FriendlyNames
+- db.YEARLY_TARGETS_DIVISION_FriendlyNames
+expected_downstream_tables:
+- '[DBAPP].[WFA_YEARLY_TARGETS_ModelView]'
+expected_write_target_count: 1
+expected_column_edge_count: 6
+source_evidence_index: materials/dbt-lineage-evidence/index.yml

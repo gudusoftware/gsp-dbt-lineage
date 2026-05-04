@@ -1,0 +1,11 @@
+{
+  "id": "E03b",
+  "label": "active",
+  "summary": "OpenMetadata's collate-sqllineage chain finds the source table all_articles but emits 0 column edges on @Starkie's verbatim datahub#11670 SQL. sqlglot 30.6.0 parses the statement to a Select but `lineage()` raises `Cannot find column 'article_name' in query.` — the STAR over ARRAY_AGG(struct ORDER BY ... LIMIT 1)[OFFSET(0)] is not expanded, so any column under `unique.*` cannot be traced.",
+  "detail": "sqlglot 30.6.0 .parse_one(sql, read='bigquery') returns a top-level Select node, but qualify_columns cannot resolve columns through the STAR-over-ARRAY_AGG-STRUCT projection. `sqlglot.lineage.lineage('article_name', sql, dialect='bigquery')` raises SqlglotError('Cannot find column \\'article_name\\' in query.'). collate-sqllineage 2.1.1 (OpenMetadata's installed chain) returns source_tables=['<default>.all_articles'] and target_tables=[] with column_lineage edges=0 — table lineage works, column lineage is empty, exactly matching @Starkie's reported symptom in datahub#11670.",
+  "tested_versions": {
+    "sqlglot": "30.6.0",
+    "collate_sqllineage": "2.1.1",
+    "collate_sqlfluff": "3.5.2"
+  }
+}

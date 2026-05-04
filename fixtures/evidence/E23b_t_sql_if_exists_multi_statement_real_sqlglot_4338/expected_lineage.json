@@ -1,0 +1,145 @@
+{
+  "backend": {
+    "cli_version": "0.0.1",
+    "mode": "fixture",
+    "parser_version": "local-jar-4.1.0.15"
+  },
+  "generator": "build_fixtures.py",
+  "manifest_metadata": {
+    "adapter_type": "tsql",
+    "dbt_version": "fixture",
+    "eligible_count": 1,
+    "project_name": "fixture",
+    "selected_count": 1
+  },
+  "nodes": [
+    {
+      "columns": [
+        {
+          "confidence": "high",
+          "name": "*",
+          "transform": "direct",
+          "upstream": [
+            {
+              "column": "*",
+              "table": "sys.views"
+            },
+            {
+              "column": "OBJECT_ID",
+              "table": "sys.views"
+            }
+          ]
+        },
+        {
+          "confidence": "high",
+          "name": "CASE-WHEN",
+          "transform": "direct",
+          "upstream": [
+            {
+              "column": "PROD_HIER:_DIVISION_CODE",
+              "table": "db.YEARLY_TARGETS_DIVISION_FriendlyNames"
+            },
+            {
+              "column": "WFA_TARGET_DIVISION",
+              "table": "db.YEARLY_TARGETS_FriendlyNames"
+            }
+          ]
+        },
+        {
+          "confidence": "high",
+          "name": "OBJECT_ID",
+          "transform": "direct",
+          "upstream": [
+            {
+              "column": "OBJECT_ID",
+              "table": "sys.views"
+            }
+          ]
+        },
+        {
+          "confidence": "low",
+          "name": "PROD_HIER:_DIVISION_CODE_FDR",
+          "transform": "direct",
+          "upstream": []
+        },
+        {
+          "confidence": "low",
+          "name": "TARGET_0_PERCENT",
+          "transform": "direct",
+          "upstream": []
+        },
+        {
+          "confidence": "low",
+          "name": "TARGET_100_ATTAINMENT_PERCENT",
+          "transform": "direct",
+          "upstream": []
+        },
+        {
+          "confidence": "low",
+          "name": "TARGET_100_PERCENT",
+          "transform": "direct",
+          "upstream": []
+        },
+        {
+          "confidence": "low",
+          "name": "TARGET_150_PERCENT",
+          "transform": "direct",
+          "upstream": []
+        },
+        {
+          "confidence": "low",
+          "name": "TARGET_50_PERCENT",
+          "transform": "direct",
+          "upstream": []
+        },
+        {
+          "confidence": "high",
+          "name": "TARGET_DIVISION",
+          "transform": "direct",
+          "upstream": [
+            {
+              "column": "TARGET_DIVISION",
+              "table": "db.YEARLY_TARGETS_FriendlyNames"
+            }
+          ]
+        },
+        {
+          "confidence": "low",
+          "name": "TARGET_DIVISION_SORT",
+          "transform": "direct",
+          "upstream": []
+        },
+        {
+          "confidence": "low",
+          "name": "YEAR",
+          "transform": "direct",
+          "upstream": []
+        }
+      ],
+      "confidence": "medium",
+      "dialect": "dbvmssql",
+      "downstream": [],
+      "node_id": "fixture.E23b",
+      "status": "parsed",
+      "unresolved": [],
+      "upstream_tables": [
+        "[DBAPP].[WFA_YEARLY_TARGETS_ModelView]",
+        "db.YEARLY_TARGETS_DIVISION_FriendlyNames",
+        "db.YEARLY_TARGETS_FriendlyNames",
+        "sys.views"
+      ],
+      "warnings": []
+    }
+  ],
+  "schema_version": "0.2.x",
+  "stats": {
+    "coverage": 0.3333333333333333,
+    "failed": 0,
+    "parsed": 1,
+    "partial": 0,
+    "resolved_columns": 4,
+    "skipped": 0,
+    "total_columns": 12,
+    "unsupported": 0
+  }
+}

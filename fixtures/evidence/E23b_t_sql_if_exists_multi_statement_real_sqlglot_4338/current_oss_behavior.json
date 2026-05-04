@@ -1,0 +1,11 @@
+{
+  "id": "E23b",
+  "label": "active",
+  "summary": "OpenMetadata's collate-sqllineage chain (sqlglot → sqlfluff → sqlparse) raises UnsupportedStatementException on @Palkers76's verbatim T-SQL deployment batch from sqlglot#4338, returning 0 column edges. sqlglot 30.6.0 parses the script as a single IfBlock and silently drops the rest of the batch (the SET / CREATE VIEW with the real ETL chain).",
+  "detail": "sqlglot 30.6.0 .parse(read='tsql') returns one top-level statement (IfBlock); .find_all(exp.Create) on the AST yields nothing, so the CREATE VIEW with the column-level lineage is gone. sqlglot.lineage.lineage('[Prod_Hier:_Division_code_FDR]', sql, dialect='tsql') raises SqlglotError('Cannot build lineage, sql must be SELECT'). collate-sqllineage 2.1.1 LineageRunner(sql, dialect='tsql') raises UnsupportedStatementException: SQLLineage doesn't support analyzing statement type [alias] for SQL: IF  EXISTS ... DROP VIEW ... GO. Maintainer triage on sqlglot#4338 was 'not high priority' (2024-11-03), confirming the failure mode persists to today.",
+  "tested_versions": {
+    "sqlglot": "30.6.0",
+    "collate_sqllineage": "2.1.1",
+    "collate_sqlfluff": "3.5.2"
+  }
+}

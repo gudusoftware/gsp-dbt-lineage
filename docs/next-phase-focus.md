@@ -101,6 +101,131 @@ Goal: make the alpha credible on the exact wedges it claims.
   JAR path is sufficient for the cached PoC pipeline. Add to the watch list
   if anonymous/authenticated mode regresses on T-SQL batch separators.
 
+#### P0 status — BigQuery `dbt-utils.deduplicate` (2026-05-04)
+
+- **Headline fixture promoted from toy SQL to real user-reported SQL.** New
+  fixture `E03b_bigquery_dbt_utils_deduplicate_real_datahub_11670` carries
+  the exact `dbt_utils.deduplicate` macro output from
+  [datahub-project/datahub#11670](https://github.com/datahub-project/datahub/issues/11670)
+  (@Starkie, Adriano Vega Llobell, 2024-10-18) — `select unique.* from
+  (select array_agg (original order by article_name desc limit 1)[offset(0)]
+  unique from all_articles original group by id)`. The verbatim SQL keeps
+  `unique` as alias (a BigQuery reserved-word edge case), lowercase
+  keywords, the missing `AS` keyword on `[offset(0)] unique` and `from
+  all_articles original`, and the original whitespace from the reporter's
+  paste. Reporter linked a full reproduction repo
+  (`Starkie/datahub-dbt-lineage-repro`) and confirmed the symptom: table
+  lineage works, column lineage is empty.
+- **OSS chain on the verbatim SQL: 0 column edges.** Direct
+  `sqlglot.parse_one(sql, read='bigquery')` returns a `Select` node, but
+  `sqlglot.lineage.lineage('article_name', sql, dialect='bigquery')` raises
+  `SqlglotError: Cannot find column 'article_name' in query.` because
+  qualify_columns does not expand STAR over an
+  `ARRAY_AGG(struct ORDER BY ... LIMIT 1)[OFFSET(0)]` projection. The
+  OpenMetadata CLL chain (`collate-sqllineage 2.1.1` →
+  `collate-sqlfluff 3.5.2` → `sqlparse 0.5.3`) finds
+  `source_tables=['<default>.all_articles']` but `get_column_lineage()`
+  returns `[]` — exactly the visual diff @Starkie attached to the issue
+  (table-level edges present, column-level panel empty).
+- **GSP recovers 3 column edges to `all_articles`.** On the same SQL,
+  GSP/SQLFlow (local JAR `gsqlparser-4.1.0.15-shaded.jar`) traces the
+  outermost `unique.*` projection back to the inner `ARRAY_AGG(...)` and
+  emits column-level edges for `*`, `ARTICLE_NAME` (visible in the inner
+  `ORDER BY`), and `ID` (visible in the inner `GROUP BY`). 1 upstream
+  table, 1 logical column projection (`*`), 3 source-column edges. The
+  mapper round-trip is byte-stable across 3 consecutive renders, the
+  schema validates, and GSP delivers strictly more lineage than the dbt
+  stock chain.
+- **Cached response: local JAR.** Captured via
+  `gsqlparser-4.1.0.15-shaded.jar` and stored at
+  `materials/dbt-lineage-evidence/poc-responses/E03b_response.json` in the
+  `{http_status, body: {code, data: {sqlflow}}}` cloud shape so
+  `LocalJarBackend` and `AnonymousBackend`/`AuthenticatedBackend` paths
+  share the same cached fixture surface.
+- **Evidence-index updated.** `materials/dbt-lineage-evidence/index.yml`
+  now carries E03b alongside E04b, E16b, and E23b as the launch-claim row
+  for the BigQuery `dbt-utils.deduplicate` wedge. `headline: true` moved
+  from E03 to E03b — the `*b` fixture is the one cited in the sidecar
+  reply on #11670 and in marketing.
+- **All four launch wedges are now backed by verbatim user-reported SQL.**
+  E03b (BigQuery `dbt-utils.deduplicate`), E04b (BigQuery procedural),
+  E16b (MSSQL stored procedures), and E23b (T-SQL cursor / IF / BEGIN /
+  END) form the symmetric set of "real user pasted their SQL into a
+  public issue tracker" fixtures the v0.1.x evidence-gated launch claim
+  rests on.
+
+#### P0 status — T-SQL cursor / IF / BEGIN / END (2026-05-03)
+
+- **Headline fixture promoted from toy SQL to real user-reported SQL.** New
+  fixture `E23b_t_sql_if_exists_multi_statement_real_sqlglot_4338` carries the
+  verbatim T-SQL deployment batch from
+  [tobymao/sqlglot#4338](https://github.com/tobymao/sqlglot/issues/4338)
+  (@Palkers76, "Error Converting from TSQL with IF in 1st line"): a real
+  Synapse-style script — `IF EXISTS (SELECT * FROM sys.views WHERE object_id
+  = OBJECT_ID(N'[DBAPP].[YEARLY_TARGETS_ModelView]')) DROP VIEW [DBAPP].[…]`,
+  three `GO` batch separators, two `SET` directives, then a `CREATE VIEW
+  [DBAPP].[WFA_YEARLY_TARGETS_ModelView]` with a 9-column projection (CASE
+  WHEN over `db.YEARLY_TARGETS_FriendlyNames T` LEFT JOIN
+  `db.YEARLY_TARGETS_DIVISION_FriendlyNames D`). All six integration-gauntlet
+  checks pass; mapper round-trip stable; deterministic render verified.
+  Maintainer triage on the upstream issue was "not high priority" (2024-11-03)
+  — the failure mode persists in sqlglot 30.6.0 and is a cleaner real-world
+  differential than the toy `E22` (cursor) and `E23` (IF/BEGIN/END) fixtures
+  alone.
+- **OSS chain on the verbatim SQL: 0 column edges, twice.** Direct
+  `sqlglot.parse_one(sql, read='tsql')` returns one top-level `IfBlock` and
+  `find_all(exp.Create)` on the AST yields nothing — the `CREATE VIEW` with
+  the real column lineage is silently dropped past the first `GO`.
+  `sqlglot.lineage.lineage('[Prod_Hier:_Division_code_FDR]', sql,
+  dialect='tsql')` raises `SqlglotError: Cannot build lineage, sql must be
+  SELECT`. The OpenMetadata CLL chain (`collate-sqllineage 2.1.1` →
+  `collate-sqlfluff 3.5.2` → `sqlparse 0.5.3`) raises
+  `UnsupportedStatementException: SQLLineage doesn't support analyzing
+  statement type [alias] for SQL: IF  EXISTS …`. Both parser paths return
+  zero column edges.
+- **GSP recovers 6 column edges across the multi-statement batch.** On the
+  same SQL, GSP/SQLFlow (local JAR `gsqlparser-4.1.0.15-shaded.jar`) parses
+  through the `IF EXISTS` / `DROP VIEW` / `GO` / `SET` header, walks into the
+  `CREATE VIEW` body, and emits one write target
+  (`[DBAPP].[WFA_YEARLY_TARGETS_ModelView]`) with column-level edges to
+  `db.YEARLY_TARGETS_FriendlyNames` and
+  `db.YEARLY_TARGETS_DIVISION_FriendlyNames`. The mapper records 4 of the 9
+  view columns with `confidence=high` upstream; the remaining 5 (the
+  unqualified `[Target_Division_Sort], [Target_0_Percent], …` projections)
+  are honestly recorded as `confidence=low, upstream=[]` rather than
+  fabricating an upstream binding — GSP flags them as orphan columns in its
+  `errors` block (`find orphan column(10500) near: [Target_Division_Sort](14,8)`).
+  This is the "richer `evidence` and `unresolved` output" the v0.1.x launch
+  claim promises.
+- **Mapper improvement (lineage_mapper.py).** `_walk_dbobjs` now iterates
+  `("tables", "views", "others")` rather than `("tables", "others")`, and
+  the procedural-evidence subType lookup now also walks the `views`
+  collection. Without this fix the `CREATE VIEW` target's `parentId` never
+  resolved to a real `_TableRef` and every create-view edge was silently
+  dropped — the existing E04b/E16b/E22/E23 fixtures (none of which exercise
+  CREATE VIEW) all still pass byte-identically with the change. Locked by
+  the existing 6-check gauntlet on E23b.
+- **Cached response: local JAR.** Captured via
+  `gsqlparser-4.1.0.15-shaded.jar` and stored at
+  `materials/dbt-lineage-evidence/poc-responses/E23b_response.json` in the
+  `{http_status, body: {code, data: {sqlflow}}}` cloud shape so
+  `LocalJarBackend` and `AnonymousBackend`/`AuthenticatedBackend` paths
+  share the same cached fixture surface.
+- **Evidence-index updated.** `materials/dbt-lineage-evidence/index.yml`
+  carries E23b alongside E04b and E16b as the launch-claim-eligible row for
+  the T-SQL cursor / IF / BEGIN / END wedge.
+- **Open follow-ups for the v0.2 mapper.** (1) Multi-hop tracing through
+  result-sets — the create_view edges reach the view via `RS-1` (the
+  projection result-set) but the mapper currently only does single-hop
+  source resolution, which is why the case-when-derived
+  `PROD_HIER:_DIVISION_CODE_FDR` row shows `confidence=low` even though
+  GSP separately recovered the case-when's real source columns. (2)
+  Distinguishing `upstream_tables` (sources) from `downstream` (write
+  target) — the view itself currently appears in `upstream_tables`, which
+  matches the existing E16b convention but understates the read-vs-write
+  semantics for catalog emission. Both are P1 candidates, not blockers
+  for the v0.1.x launch claim.
+
 #### P0 status — BigQuery procedural (2026-05-03)
 
 - **Headline fixture promoted from toy SQL to real user-reported SQL.** New

@@ -1,0 +1,32 @@
+id: E03b
+label: active
+dialect: bigquery
+dbvendor: dbvbigquery
+description: |
+  Verbatim user-reported SQL from datahub-project/datahub#11670 (@Starkie,
+  Adriano Vega Llobell): the exact `dbt_utils.deduplicate` macro output
+  that ships with dbt-utils 1.x — `select unique.* from (select array_agg
+  (original order by article_name desc limit 1)[offset(0)] unique from
+  all_articles original group by id)`. The reporter uses `unique` as an
+  alias (a BigQuery reserved word in some contexts), lowercase keywords,
+  and omits `AS` on the alias and the FROM-clause table — every quirk is
+  preserved verbatim from the issue body. Reporter linked a full
+  reproduction repo (Starkie/datahub-dbt-lineage-repro) and confirmed the
+  symptom: table-level lineage works, column-level lineage is empty.
+  sqlglot 30.6.0 parses the SQL but `lineage('article_name', sql,
+  dialect='bigquery')` raises `Cannot find column 'article_name' in
+  query.` because STAR over `ARRAY_AGG(struct ORDER BY ... LIMIT 1)
+  [OFFSET(0)]` is not expanded. collate-sqllineage 2.1.1 (OpenMetadata's
+  CLL chain) finds the source table `all_articles` but emits 0 column
+  edges. GSP/SQLFlow (local JAR 4.1.0.15) recovers 3 column edges
+  (`*`, `ARTICLE_NAME`, `ID`) into the outermost `unique.*` projection.
+  Authoritative fixture for the v0.1.x BigQuery `dbt-utils.deduplicate`
+  launch claim — replaces the toy-renamed E03 (which used `u` to side-step
+  the reserved-word edge case).
+sqlglot_phase01_result: PARSES_BUT_LINEAGE_DROPS_STAR_OVER_ARRAY_AGG_STRUCT
+expected_upstream_tables:
+- all_articles
+expected_downstream_tables: []
+expected_write_target_count: 0
+expected_column_edge_count: 3
+source_evidence_index: materials/dbt-lineage-evidence/index.yml
