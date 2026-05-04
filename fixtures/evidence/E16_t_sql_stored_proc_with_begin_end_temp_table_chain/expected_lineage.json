@@ -34,6 +34,51 @@
       "confidence": "high",
       "dialect": "dbvmssql",
       "downstream": [],
+      "evidence": {
+        "procedural": {
+          "column_edge_count": 2,
+          "process_count": 2,
+          "write_target_count": 2,
+          "write_targets": [
+            {
+              "columns": [
+                "COLUMNNAME"
+              ],
+              "edges": [
+                {
+                  "from": {
+                    "column": "COLUMNNAME",
+                    "table": "schName.sourceTable"
+                  },
+                  "target_column": "COLUMNNAME"
+                }
+              ],
+              "from": [
+                "schName.sourceTable"
+              ],
+              "table": "#temp"
+            },
+            {
+              "columns": [
+                "COLUMNNAME"
+              ],
+              "edges": [
+                {
+                  "from": {
+                    "column": "COLUMNNAME",
+                    "table": "#temp"
+                  },
+                  "target_column": "COLUMNNAME"
+                }
+              ],
+              "from": [
+                "#temp"
+              ],
+              "table": "schName.targetTable"
+            }
+          ]
+        }
+      },
       "node_id": "fixture.E16",
       "status": "parsed",
       "unresolved": [],

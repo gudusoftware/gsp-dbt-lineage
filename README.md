@@ -35,7 +35,7 @@ The package replaces dbt's CLL only where sqlglot returns nothing; sqlglot outpu
 | `--state` / `state:modified+` (slim CI) | **planned** | Phase C / v0.2 beta. |
 | Per-column semantic diff (which column lost which upstream) | **planned** | Phase C / v0.2 beta. |
 | PyPI publication | **planned** | Phase D / v1.0. |
-| `confidence` / `unresolved` evidence in output | **partial** | Schema supports it; mapper currently emits `confidence: high` for parsed nodes and dynamic-SQL warnings, no `evidence` block yet. |
+| `confidence` / `unresolved` evidence in output | **implemented** | Mapper emits per-column `confidence`, `evidence.procedural` (per-write-target receipts on multi-statement scripts), `evidence.parser_diagnostics` (GSP orphan-column hints with line/col), and node-level `unresolved` entries (`parser_orphan_column`, `upstream_unresolved`, `parser_syntax_hint`, `source_table_unknown`). Failed/skipped nodes carry their evidence in `unresolved` (`parser_error`, `quota_limited`, `compiled_sql_unreadable`, `skipped`) — no `evidence` block when parse never happened. |
 
 ### Roadmap
 

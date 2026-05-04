@@ -49,6 +49,68 @@
       "confidence": "high",
       "dialect": "dbvbigquery",
       "downstream": [],
+      "evidence": {
+        "procedural": {
+          "column_edge_count": 4,
+          "process_count": 2,
+          "write_target_count": 2,
+          "write_targets": [
+            {
+              "columns": [
+                "ID",
+                "NAME"
+              ],
+              "edges": [
+                {
+                  "from": {
+                    "column": "ID",
+                    "table": "t1"
+                  },
+                  "target_column": "ID"
+                },
+                {
+                  "from": {
+                    "column": "NAME",
+                    "table": "t1"
+                  },
+                  "target_column": "NAME"
+                }
+              ],
+              "from": [
+                "t1"
+              ],
+              "table": "project.dataset.tgt"
+            },
+            {
+              "columns": [
+                "ID",
+                "NAME"
+              ],
+              "edges": [
+                {
+                  "from": {
+                    "column": "ID",
+                    "table": "project.dataset.src"
+                  },
+                  "target_column": "ID"
+                },
+                {
+                  "from": {
+                    "column": "NAME",
+                    "table": "project.dataset.src"
+                  },
+                  "target_column": "NAME"
+                }
+              ],
+              "from": [
+                "project.dataset.src"
+              ],
+              "subType": "temp_table",
+              "table": "t1"
+            }
+          ]
+        }
+      },
       "node_id": "fixture.E04",
       "status": "parsed",
       "unresolved": [],

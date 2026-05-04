@@ -122,6 +122,44 @@ def test_mapper_runs_against_cached_response(fixture_loader, fixture_dir):
     )
 
 
+def test_e23b_emits_orphan_column_evidence(fixture_loader):
+    """E23b carries 7 GSP `find orphan column` hints — those must surface as
+    `evidence.parser_diagnostics` entries and as per-column
+    `parser_orphan_column` records in node-level `unresolved`. This is the
+    "richer evidence and unresolved output" the v0.1.x launch claim promises.
+    """
+    fx = fixture_loader("E23b_t_sql_if_exists_multi_statement_real_sqlglot_4338")
+    node = map_gsp_to_node(fx["gsp_response"], node_id="fixture.E23b", dialect=fx["dialect"])
+
+    diags = node["evidence"]["parser_diagnostics"]
+    orphan_cols = {d["near_column"] for d in diags if d.get("category") == "orphan_column"}
+    assert orphan_cols == {
+        "Target_Division_Sort", "Target_0_Percent", "Target_50_Percent",
+        "Target_100_Percent", "Target_100_Attainment_Percent",
+        "Target_150_Percent", "Year",
+    }
+
+    # Every orphan-column diagnostic must tie back to a node-level unresolved
+    # entry — that's the per-column "what was not trusted" receipt.
+    orphan_unresolved = {
+        u["target_column"]
+        for u in node["unresolved"]
+        if u["reason"] == "parser_orphan_column"
+    }
+    # Names are matched case-insensitively against the columns list (which
+    # GSP serializes upper-case for T-SQL); 7 columns must be tagged.
+    assert len(orphan_unresolved) == 7
+
+    # The case-when-derived column GSP could *not* flag as orphan must still
+    # appear as `upstream_unresolved` so the document is self-explanatory.
+    upstream_unresolved = {
+        u["target_column"]
+        for u in node["unresolved"]
+        if u["reason"] == "upstream_unresolved"
+    }
+    assert "PROD_HIER:_DIVISION_CODE_FDR" in upstream_unresolved
+
+
 @pytest.mark.parametrize("fixture_dir", ACTIVE_FIXTURES)
 def test_deterministic_render(fixture_loader, fixture_dir):
     fx = fixture_loader(fixture_dir)

@@ -119,9 +119,123 @@
       "confidence": "medium",
       "dialect": "dbvmssql",
       "downstream": [],
+      "evidence": {
+        "parser_diagnostics": [
+          {
+            "category": "orphan_column",
+            "col": 8,
+            "line": 14,
+            "message": "find orphan column(10500) near: [Target_Division_Sort](14,8)",
+            "near_column": "Target_Division_Sort",
+            "type": "SyntaxHint"
+          },
+          {
+            "category": "orphan_column",
+            "col": 8,
+            "line": 15,
+            "message": "find orphan column(10500) near: [Target_0_Percent](15,8)",
+            "near_column": "Target_0_Percent",
+            "type": "SyntaxHint"
+          },
+          {
+            "category": "orphan_column",
+            "col": 8,
+            "line": 16,
+            "message": "find orphan column(10500) near: [Target_50_Percent](16,8)",
+            "near_column": "Target_50_Percent",
+            "type": "SyntaxHint"
+          },
+          {
+            "category": "orphan_column",
+            "col": 8,
+            "line": 17,
+            "message": "find orphan column(10500) near: [Target_100_Percent](17,8)",
+            "near_column": "Target_100_Percent",
+            "type": "SyntaxHint"
+          },
+          {
+            "category": "orphan_column",
+            "col": 8,
+            "line": 18,
+            "message": "find orphan column(10500) near: [Target_100_Attainment_Percent](18,8)",
+            "near_column": "Target_100_Attainment_Percent",
+            "type": "SyntaxHint"
+          },
+          {
+            "category": "orphan_column",
+            "col": 8,
+            "line": 19,
+            "message": "find orphan column(10500) near: [Target_150_Percent](19,8)",
+            "near_column": "Target_150_Percent",
+            "type": "SyntaxHint"
+          },
+          {
+            "category": "orphan_column",
+            "col": 8,
+            "line": 20,
+            "message": "find orphan column(10500) near: [Year](20,8)",
+            "near_column": "Year",
+            "type": "SyntaxHint"
+          }
+        ]
+      },
       "node_id": "fixture.E23b",
       "status": "parsed",
-      "unresolved": [],
+      "unresolved": [
+        {
+          "reason": "upstream_unresolved",
+          "target_column": "PROD_HIER:_DIVISION_CODE_FDR"
+        },
+        {
+          "col": 8,
+          "line": 15,
+          "parser_message": "find orphan column(10500) near: [Target_0_Percent](15,8)",
+          "reason": "parser_orphan_column",
+          "target_column": "TARGET_0_PERCENT"
+        },
+        {
+          "col": 8,
+          "line": 18,
+          "parser_message": "find orphan column(10500) near: [Target_100_Attainment_Percent](18,8)",
+          "reason": "parser_orphan_column",
+          "target_column": "TARGET_100_ATTAINMENT_PERCENT"
+        },
+        {
+          "col": 8,
+          "line": 17,
+          "parser_message": "find orphan column(10500) near: [Target_100_Percent](17,8)",
+          "reason": "parser_orphan_column",
+          "target_column": "TARGET_100_PERCENT"
+        },
+        {
+          "col": 8,
+          "line": 19,
+          "parser_message": "find orphan column(10500) near: [Target_150_Percent](19,8)",
+          "reason": "parser_orphan_column",
+          "target_column": "TARGET_150_PERCENT"
+        },
+        {
+          "col": 8,
+          "line": 16,
+          "parser_message": "find orphan column(10500) near: [Target_50_Percent](16,8)",
+          "reason": "parser_orphan_column",
+          "target_column": "TARGET_50_PERCENT"
+        },
+        {
+          "col": 8,
+          "line": 14,
+          "parser_message": "find orphan column(10500) near: [Target_Division_Sort](14,8)",
+          "reason": "parser_orphan_column",
+          "target_column": "TARGET_DIVISION_SORT"
+        },
+        {
+          "col": 8,
+          "line": 20,
+          "parser_message": "find orphan column(10500) near: [Year](20,8)",
+          "reason": "parser_orphan_column",
+          "target_column": "YEAR"
+        }
+      ],
       "upstream_tables": [
         "[DBAPP].[WFA_YEARLY_TARGETS_ModelView]",
         "db.YEARLY_TARGETS_DIVISION_FriendlyNames",

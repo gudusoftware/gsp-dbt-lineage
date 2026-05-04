@@ -60,7 +60,12 @@
       "downstream": [],
       "node_id": "fixture.E19",
       "status": "parsed",
-      "unresolved": [],
+      "unresolved": [
+        {
+          "reason": "upstream_unresolved",
+          "target_column": "FOO"
+        }
+      ],
       "upstream_tables": [
         "mySchema.myTable"
       ],

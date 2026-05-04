@@ -43,6 +43,15 @@ logger = logging.getLogger(__name__)
 _GSP_SYNTHETIC_COLUMN_NAMES = {"COUNT", "RELATIONROWS"}
 _GSP_SYNTHETIC_COLUMN_RE = re.compile(r"^COUNT\(\d+\)$", re.IGNORECASE)
 
+# GSP `errors` block messages for "find orphan column(NNNNN) near: [Name](row,col)".
+# These are emitted when GSP sees a bare column reference inside a SELECT body
+# that it could not bind to any input table (typical for unqualified columns
+# inside CREATE VIEW projections that depend on context the parser dropped).
+_ORPHAN_COLUMN_RE = re.compile(
+    r"orphan\s+column\s*\(\d+\)\s*near:\s*\[?([^\]\(]+?)\]?\s*\((\d+)\s*,\s*(\d+)\)",
+    re.IGNORECASE,
+)
+
 
 def _is_synthetic_column(name: str) -> bool:
     if not name:
@@ -132,6 +141,79 @@ def _classify_relationship(rel_type: str) -> tuple[str, bool]:
     if t == "fdr":
         return "control", False
     return "unknown", True
+
+
+def _extract_parser_diagnostics(
+    sqlflow: dict[str, Any],
+) -> tuple[list[dict[str, Any]], dict[str, dict[str, Any]]]:
+    """Normalize GSP's `errors` block into structured diagnostics.
+
+    GSP emits parser hints (e.g. SyntaxHint) alongside lineage data; the most
+    useful ones for partial-trust nodes are "find orphan column" warnings,
+    which name the projection column GSP could not bind. Surfacing these tells
+    a reviewer *why* a low-confidence column is empty rather than leaving
+    them to guess.
+
+    Returns ``(diagnostics, orphan_index)`` where ``diagnostics`` is the list
+    suitable for ``evidence.parser_diagnostics`` and ``orphan_index`` maps
+    column name → diagnostic. The index is keyed by both the exact GSP-side
+    name and its uppercase form so per-column lookup matches case-sensitive
+    quoted identifiers first and falls back to case-insensitive (the typical
+    GSP behavior for unquoted T-SQL / BigQuery names).
+
+    Defensive against malformed payloads: GSP cloud / local-jar shapes have
+    drifted historically, so any non-list `errors`, non-dict entry, or
+    non-string field is silently skipped rather than crashing the mapper.
+    """
+    errors_raw = sqlflow.get("errors")
+    if not isinstance(errors_raw, list):
+        return [], {}
+
+    diagnostics: list[dict[str, Any]] = []
+    orphan_by_name: dict[str, dict[str, Any]] = {}
+    for err in errors_raw:
+        if not isinstance(err, dict):
+            continue
+        raw_msg = err.get("errorMessage")
+        msg = raw_msg.strip() if isinstance(raw_msg, str) else ""
+        if not msg:
+            continue
+        raw_type = err.get("errorType")
+        err_type = raw_type if isinstance(raw_type, str) else ""
+
+        # `originCoordinates` is normally `[{x, y}, ...]`, but local-jar and
+        # cloud responses have shipped it as a single dict in older builds.
+        origin = err.get("originCoordinates")
+        first: Any = None
+        if isinstance(origin, list) and origin:
+            first = origin[0]
+        elif isinstance(origin, dict):
+            first = origin
+        line = first.get("x") if isinstance(first, dict) else None
+        col = first.get("y") if isinstance(first, dict) else None
+
+        match = _ORPHAN_COLUMN_RE.search(msg)
+        if match:
+            near_name = match.group(1).strip()
+            entry: dict[str, Any] = {
+                "type": err_type or "SyntaxHint",
+                "category": "orphan_column",
+                "near_column": near_name,
+                "line": int(match.group(2)),
+                "col": int(match.group(3)),
+                "message": msg,
+            }
+            diagnostics.append(entry)
+            orphan_by_name.setdefault(near_name, entry)
+            orphan_by_name.setdefault(near_name.upper(), entry)
+            continue
+        entry = {"type": err_type or "Hint", "message": msg}
+        if isinstance(line, int):
+            entry["line"] = line
+        if isinstance(col, int):
+            entry["col"] = col
+        diagnostics.append(entry)
+    return diagnostics, orphan_by_name
 
 
 def _extract_procedural_evidence(
@@ -280,6 +362,7 @@ def map_gsp_to_node(
     relationships = sqlflow.get("relationships") or []
 
     tables = _walk_dbobjs(dbobjs)
+    parser_diagnostics, orphan_by_name = _extract_parser_diagnostics(sqlflow)
 
     # 1. Identify upstream tables (real tables only — drop result-sets/temps).
     upstream_tables = sorted({t.fqn for t in tables.values() if t.is_real})
@@ -380,6 +463,53 @@ def map_gsp_to_node(
     #     WHERE / ORDER BY clauses
     columns = [c for c in columns if not _is_synthetic_column(c["name"])]
 
+    # For every column that ended up without a resolved upstream, attach a
+    # node-level `unresolved` entry. If a GSP parser-diagnostic flagged the
+    # same column name as orphan, surface that as the reason so a reviewer can
+    # see exactly which projection the parser could not bind. Otherwise tag
+    # the entry as `upstream_unresolved` — GSP saw the column but the mapper
+    # could not trace it to a real source (typical of multi-hop CASE-WHEN /
+    # derived expressions where only single-hop tracing is wired today).
+    #
+    # Exact name match is tried before the uppercase fallback so case-sensitive
+    # quoted identifiers (`"MyCol"` distinct from `"mycol"`) bind to the right
+    # diagnostic rather than collapsing onto a same-spelling neighbor.
+    for col in columns:
+        if col["upstream"]:
+            continue
+        name = col["name"]
+        diag = orphan_by_name.get(name) or orphan_by_name.get(name.upper())
+        if diag is not None:
+            unresolved.append({
+                "reason": "parser_orphan_column",
+                "target_column": name,
+                "line": diag["line"],
+                "col": diag["col"],
+                "parser_message": diag["message"],
+            })
+        else:
+            unresolved.append({
+                "reason": "upstream_unresolved",
+                "target_column": name,
+            })
+
+    # Surface non-column-specific parser hints (anything not matched as an
+    # orphan-column rule) as node-level unresolved records too — they tell a
+    # reviewer "the parser saw something it didn't fully trust" even when no
+    # specific projection name is involved.
+    for diag in parser_diagnostics:
+        if diag.get("category") == "orphan_column":
+            continue
+        entry: dict[str, Any] = {
+            "reason": "parser_syntax_hint",
+            "parser_message": diag.get("message", ""),
+        }
+        if "line" in diag:
+            entry["line"] = diag["line"]
+        if "col" in diag:
+            entry["col"] = diag["col"]
+        unresolved.append(entry)
+
     # 4. Status / overall confidence.
     if not columns and not upstream_tables:
         status = "unsupported"
@@ -402,7 +532,9 @@ def map_gsp_to_node(
         "unresolved": unresolved,
         "warnings": [],
     }
-    evidence = _extract_procedural_evidence(sqlflow, tables)
+    evidence = _extract_procedural_evidence(sqlflow, tables) or {}
+    if parser_diagnostics:
+        evidence["parser_diagnostics"] = parser_diagnostics
     if evidence:
         node["evidence"] = evidence
     return node
