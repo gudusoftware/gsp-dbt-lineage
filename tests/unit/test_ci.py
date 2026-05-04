@@ -1,11 +1,18 @@
 import pytest
 
-from gsp_dbt_lineage.ci import CIGuardError, enforce_anonymous_ci_guard, is_ci_environment
+from gsp_dbt_lineage.ci import CI_ENV_VARS, CIGuardError, enforce_anonymous_ci_guard, is_ci_environment
+
+
+def _scrub_ci_env(monkeypatch):
+    """Clear every CI env var the detector knows about — required when these
+    tests run inside a real CI runner (GitHub Actions sets GITHUB_ACTIONS
+    alongside CI; deleting only CI leaves the detector firing)."""
+    for var in CI_ENV_VARS:
+        monkeypatch.delenv(var, raising=False)
 
 
 def test_no_ci_envvars(monkeypatch):
-    for var in ("CI", "GITHUB_ACTIONS", "GITLAB_CI"):
-        monkeypatch.delenv(var, raising=False)
+    _scrub_ci_env(monkeypatch)
     assert is_ci_environment() is False
 
 
@@ -15,14 +22,13 @@ def test_truthy_ci_var(monkeypatch):
 
 
 def test_falsey_ci_var(monkeypatch):
+    _scrub_ci_env(monkeypatch)
     monkeypatch.setenv("CI", "false")
-    monkeypatch.delenv("GITHUB_ACTIONS", raising=False)
-    monkeypatch.delenv("GITLAB_CI", raising=False)
     assert is_ci_environment() is False
 
 
 def test_guard_no_op_in_dev(monkeypatch):
-    monkeypatch.delenv("CI", raising=False)
+    _scrub_ci_env(monkeypatch)
     enforce_anonymous_ci_guard("anonymous", 999)
 
 
